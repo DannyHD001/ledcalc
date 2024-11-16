@@ -44,5 +44,28 @@ export const DEFAULT_PANELS = [
     },
     controllerOutputCapacity: 655360,
     flightCaseCapacity: 12
+  },
+  {
+    id: '3',
+    name: 'Mambo Twist',
+    manufacturer: 'Tritonos',
+    width: 768,
+    height: 768,
+    pixelPitch: 6.0,
+    weight: 17.2,
+    power: 250,
+    headerConfig: {
+      single: {
+        weight: 0.6,
+        points: 1
+      },
+      double: {
+        weight: 1.0,
+        points: 2
+      },
+      attachmentType: 'clamp'
+    },
+    controllerOutputCapacity: 650000,
+    flightCaseCapacity: 4
   }
 ];
