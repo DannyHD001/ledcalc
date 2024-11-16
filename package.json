@@ -31,7 +31,4 @@
     "typescript": "^5.2.2",
     "vite": "^5.1.6"
   }
-  "scripts": {
-  "deploy": "vite build && git add dist && git commit -m 'Deploy' && git subtree push --prefix dist origin gh-pages"
-}
 }
