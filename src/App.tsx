@@ -9,7 +9,7 @@ import { Panel } from './types/panel';
 import { useDatabase } from './hooks/useDatabase';
 import { DatabaseStatus } from './components/DatabaseStatus';
 
-const LOGO_URL = "https://cdn.discordapp.com/attachments/1105588640484184225/1105588730984673350/Av-teknikk_Logo.png?ex=6735b17e&is=67345ffe&hm=8330e73c69709957331dac69a501c314421cc564654a79541884f556e9026c78&";
+const LOGO_URL = "https://cdn.discordapp.com/attachments/1105588640484184225/1105588730984673350/Av-teknikk_Logo.png?ex=6739a5fe&is=6738547e&hm=a061b352aab9ad52c5ba6b793e92785b8cfc7f21ff8ed145598fb50bd330b555&";
 
 function App() {
   const [selectedPanel, setSelectedPanel] = useState<Panel | null>(null);
