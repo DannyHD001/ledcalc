@@ -67,5 +67,28 @@ export const DEFAULT_PANELS = [
     },
     controllerOutputCapacity: 650000,
     flightCaseCapacity: 4
+  },
+  {
+    id: '4',
+    name: 'Face 5',
+    manufacturer: 'Martin',
+    width: 500,
+    height: 562.5,
+    pixelPitch: 5.208,
+    weight: 10.5,
+    power: 190,
+    headerConfig: {
+      single: {
+        weight: 2.4,
+        points: 1
+      },
+      double: {
+        weight: 5.0,
+        points: 2
+      },
+      attachmentType: 'shackle'
+    },
+    controllerOutputCapacity: 500000,
+    flightCaseCapacity: 4
   }
 ];
