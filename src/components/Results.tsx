@@ -24,6 +24,9 @@ export function Results({ panel, horizontalPanels, verticalPanels, logo }: Resul
 
   const calculations = usePanelCalculator({ panel, horizontalPanels, verticalPanels });
 
+  // Calculate total panels
+  const totalPanels = horizontalPanels * verticalPanels;
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -75,6 +78,19 @@ export function Results({ panel, horizontalPanels, verticalPanels, logo }: Resul
           </p>
           <p className="mt-2 text-sm text-gray-600">
             Total: {calculations.resolution.total.toLocaleString()} pixels
+          </p>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">Total Panels</h3>
+            <Grid className="w-6 h-6 text-blue-600" />
+          </div>
+          <p className="text-3xl font-bold text-blue-600">
+            {totalPanels}
+          </p>
+          <p className="mt-2 text-sm text-gray-600">
+            {horizontalPanels}×{verticalPanels} panels
           </p>
         </div>
 
