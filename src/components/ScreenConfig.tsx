@@ -55,6 +55,9 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
   const widthDiff = Math.abs(parseFloat(desiredWidth) - actualWidth);
   const heightDiff = Math.abs(parseFloat(desiredHeight) - actualHeight);
 
+  // Calculate total panels
+  const totalPanels = horizontalPanels * verticalPanels;
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm space-y-6">
       <h3 className="text-lg font-semibold text-gray-900">Screen Configuration</h3>
@@ -153,6 +156,9 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
           </div>
           <div>
             <span className="font-medium">Actual Height:</span> {actualHeight.toFixed(1)} cm ({verticalPanels} panels)
+          </div>
+          <div>
+            <span className="font-medium">Total Panels:</span> {totalPanels}
           </div>
           <div className="md:col-span-2">
             <span className="font-medium">Panel Size:</span> {(selectedPanel.width / 10).toFixed(1)} × {(selectedPanel.height / 10).toFixed(1)} cm
