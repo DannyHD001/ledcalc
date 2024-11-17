@@ -89,7 +89,7 @@ export const DEFAULT_PANELS = [
       attachmentType: 'shackle'
     },
     controllerOutputCapacity: 500000,
-    flightCaseCapacity: 4
+    flightCaseCapacity: 8
   },
   {
     id: '5',
@@ -111,7 +111,7 @@ export const DEFAULT_PANELS = [
       },
       attachmentType: 'shackle'
     },
-    controllerOutputCapacity: 500000,
-    flightCaseCapacity: 4
+    controllerOutputCapacity: 650000,
+    flightCaseCapacity: 8
   }
 ];
