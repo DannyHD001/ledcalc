@@ -90,5 +90,28 @@ export const DEFAULT_PANELS = [
     },
     controllerOutputCapacity: 500000,
     flightCaseCapacity: 4
+  },
+  {
+    id: '5',
+    name: 'Astro Series',
+    manufacturer: 'Uniview Led',
+    width: 500,
+    height: 500,
+    pixelPitch: 2.4,
+    weight: 7.4,
+    power: 190,
+    headerConfig: {
+      single: {
+        weight: 2.4,
+        points: 1
+      },
+      double: {
+        weight: 5.0,
+        points: 2
+      },
+      attachmentType: 'shackle'
+    },
+    controllerOutputCapacity: 500000,
+    flightCaseCapacity: 4
   }
 ];
