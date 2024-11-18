@@ -103,7 +103,7 @@ export function PanelSelector({
             }`}
           >
             <div className="flex justify-between items-start mb-2">
-              <h3 className="text-sm font-medium text-gray-900">{panel.manufacturer}" "{panel.name}</h3>
+              <h3 className="text-sm font-medium text-gray-900">{panel.manufacturer} - {panel.name}</h3>
               <div className="flex space-x-2">
                 <button
                   onClick={(e) => {
