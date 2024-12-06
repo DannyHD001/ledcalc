@@ -3,7 +3,7 @@ name: Deploy Vite App
 on:
   push:
     branches:
-      - main
+      - gh-pages
 
 jobs:
   build-and-deploy:
