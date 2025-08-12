@@ -8,8 +8,7 @@ import { Results } from './components/Results';
 import { Panel } from './types/panel';
 import { useDatabase } from './hooks/useDatabase';
 import { DatabaseStatus } from './components/DatabaseStatus';
-
-const LOGO_URL = "https://cdn.discordapp.com/attachments/1105588640484184225/1105588730984673350/Av-teknikk_Logo.png?ex=6739a5fe&is=6738547e&hm=a061b352aab9ad52c5ba6b793e92785b8cfc7f21ff8ed145598fb50bd330b555&";
+import avteknikLogo from './assets/avteknikk-logo.svg';
 
 function App() {
   const [selectedPanel, setSelectedPanel] = useState<Panel | null>(null);
@@ -22,7 +21,7 @@ function App() {
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center space-x-4 mb-8">
-          <img src={LOGO_URL} alt="AV Teknikk" className="h-16" />
+          <img src={avteknikLogo} alt="AV Teknikk" className="h-16" />
         </div>
         
         <Tabs>
@@ -68,7 +67,7 @@ function App() {
                 panel={selectedPanel}
                 horizontalPanels={horizontalPanels}
                 verticalPanels={verticalPanels}
-                logo={LOGO_URL}
+                logo={avteknikLogo}
                 numberingDirection={numberingDirection}
                 onNumberingDirectionChange={setNumberingDirection}
               />
