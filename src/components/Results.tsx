@@ -1,4 +1,3 @@
-import React from 'react';
 import { Panel } from '../types/panel';
 import { Download, Monitor, Weight, Cpu, Box, Network, Grid } from 'lucide-react';
 import { PDFDownloadLink } from '@react-pdf/renderer';
@@ -11,9 +10,11 @@ interface ResultsProps {
   horizontalPanels: number;
   verticalPanels: number;
   logo?: string;
+  numberingDirection: 'left' | 'right' | 'top' | 'bottom';
+  onNumberingDirectionChange: (direction: 'left' | 'right' | 'top' | 'bottom') => void;
 }
 
-export function Results({ panel, horizontalPanels, verticalPanels, logo }: ResultsProps) {
+export function Results({ panel, horizontalPanels, verticalPanels, logo, numberingDirection, onNumberingDirectionChange }: ResultsProps) {
   if (!panel) {
     return (
       <div className="p-6">
@@ -23,8 +24,6 @@ export function Results({ panel, horizontalPanels, verticalPanels, logo }: Resul
   }
 
   const calculations = usePanelCalculator({ panel, horizontalPanels, verticalPanels });
-
-  // Calculate total panels
   const totalPanels = horizontalPanels * verticalPanels;
 
   return (
@@ -39,17 +38,16 @@ export function Results({ panel, horizontalPanels, verticalPanels, logo }: Resul
               horizontalPanels={horizontalPanels}
               verticalPanels={verticalPanels}
               logo={logo}
+              numberingDirection={numberingDirection}
             />
           }
           fileName={`led-screen-configuration-${panel.name.toLowerCase().replace(/\s+/g, '-')}.pdf`}
           className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
         >
-          {({ loading }) => (
-            <>
-              <Download className="w-4 h-4 mr-2" />
-              {loading ? 'Generating PDF...' : 'Download PDF'}
-            </>
-          )}
+          <>
+            <Download className="w-4 h-4 mr-2" />
+            Download PDF
+          </>
         </PDFDownloadLink>
       </div>
 
@@ -153,6 +151,8 @@ export function Results({ panel, horizontalPanels, verticalPanels, logo }: Resul
           panel={panel}
           horizontalPanels={horizontalPanels}
           verticalPanels={verticalPanels}
+          numberingDirection={numberingDirection}
+          onNumberingDirectionChange={onNumberingDirectionChange}
         />
       </div>
     </div>

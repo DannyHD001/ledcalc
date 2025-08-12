@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Tabs } from './components/Tabs';
 import { TabPanel } from './components/TabPanel';
 import { PanelSelector } from './components/PanelSelector';
@@ -15,6 +15,7 @@ function App() {
   const [selectedPanel, setSelectedPanel] = useState<Panel | null>(null);
   const [horizontalPanels, setHorizontalPanels] = useState(1);
   const [verticalPanels, setVerticalPanels] = useState(1);
+  const [numberingDirection, setNumberingDirection] = useState<'left' | 'right' | 'top' | 'bottom'>('left');
   const { panels, loading, error, apiStatus, savePanel, removePanel } = useDatabase();
 
   return (
@@ -55,6 +56,8 @@ function App() {
                 panel={selectedPanel}
                 horizontalPanels={horizontalPanels}
                 verticalPanels={verticalPanels}
+                numberingDirection={numberingDirection}
+                onNumberingDirectionChange={setNumberingDirection}
               />
             )}
           </TabPanel>
@@ -66,6 +69,8 @@ function App() {
                 horizontalPanels={horizontalPanels}
                 verticalPanels={verticalPanels}
                 logo={LOGO_URL}
+                numberingDirection={numberingDirection}
+                onNumberingDirectionChange={setNumberingDirection}
               />
             )}
           </TabPanel>
