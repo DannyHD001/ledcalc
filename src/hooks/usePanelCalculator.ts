@@ -19,6 +19,12 @@ interface CalculationResult {
   };
   weight: number;
   power: number;
+  powerLines: {
+    needed: number;
+    maxWattsPerLine: number;
+    panelsPerLine: number;
+    totalPowerLoad: number;
+  };
   rigging: {
     singleHeaders: number;
     doubleHeaders: number;
@@ -37,6 +43,12 @@ const defaultResult: CalculationResult = {
   resolution: { horizontal: 0, vertical: 0, total: 0 },
   weight: 0,
   power: 0,
+  powerLines: {
+    needed: 0,
+    maxWattsPerLine: 3600,
+    panelsPerLine: 0,
+    totalPowerLoad: 0
+  },
   rigging: {
     singleHeaders: 0,
     doubleHeaders: 0,
@@ -99,6 +111,11 @@ export function usePanelCalculator({ panel, horizontalPanels, verticalPanels }: 
     const totalPorts = Math.ceil(totalPanels / panelsPerPort);
     const controllersNeeded = Math.ceil(totalPorts / maxPorts);
 
+    // Calculate power line requirements
+    const maxWattsPerLine = panel.powerConfig?.maxWattsPerLine || 3600;
+    const panelsPerPowerLine = Math.floor(maxWattsPerLine / panel.power);
+    const powerLinesNeeded = Math.ceil(totalPanels / panelsPerPowerLine);
+
     return {
       dimensions: { width: screenWidth, height: screenHeight },
       resolution: { 
@@ -108,6 +125,12 @@ export function usePanelCalculator({ panel, horizontalPanels, verticalPanels }: 
       },
       weight: totalWeight,
       power: totalPower,
+      powerLines: {
+        needed: powerLinesNeeded,
+        maxWattsPerLine,
+        panelsPerLine: panelsPerPowerLine,
+        totalPowerLoad: totalPower
+      },
       rigging: {
         singleHeaders,
         doubleHeaders,

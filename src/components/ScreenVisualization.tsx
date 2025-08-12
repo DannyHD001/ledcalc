@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Panel } from '../types/panel';
-import { Circle, Wrench } from 'lucide-react';
+import { Circle, Wrench, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 
 interface ScreenVisualizationProps {
   panel: Panel | null;
@@ -18,6 +18,8 @@ export function ScreenVisualization({
   onNumberingDirectionChange
 }: ScreenVisualizationProps) {
   const [showProcessorLines, setShowProcessorLines] = useState(true);
+  const [zoom, setZoom] = useState(1);
+  const containerRef = useRef<HTMLDivElement>(null);
   
   // Get processor configuration from panel
   const getProcessorConfig = () => {
@@ -347,6 +349,31 @@ export function ScreenVisualization({
 
   const extraSpace = getExtraSpace();
 
+  // Calculate fit-to-container zoom level
+  const calculateFitZoom = () => {
+    const containerWidth = 800; // Approximate container width
+    const containerHeight = 600; // Approximate container height
+    const totalContentWidth = totalWidth + extraSpace.width + 64; // Adding padding
+    const totalContentHeight = totalHeight + extraSpace.height + HEADER_HEIGHT + 64; // Adding padding
+    
+    const scaleX = containerWidth / totalContentWidth;
+    const scaleY = containerHeight / totalContentHeight;
+    
+    return Math.min(scaleX, scaleY, 1); // Don't zoom in beyond 100%
+  };
+
+  // Initialize zoom to fit on component mount
+  useEffect(() => {
+    if (horizontalPanels > 0 && verticalPanels > 0) {
+      const fitZoom = calculateFitZoom();
+      setZoom(fitZoom);
+    }
+  }, [horizontalPanels, verticalPanels]);
+
+  const handleZoomIn = () => setZoom(prev => Math.min(prev * 1.2, 3));
+  const handleZoomOut = () => setZoom(prev => Math.max(prev / 1.2, 0.1));
+  const handleFitToContainer = () => setZoom(calculateFitZoom());
+
   return (
     <div className="space-y-4">
       {/* Processor Configuration */}
@@ -418,10 +445,40 @@ export function ScreenVisualization({
       </div>
 
       {/* Numbering Direction Controls */}
-      <div className="flex items-center justify-end space-x-4">
-        <span className="text-sm text-gray-600">Numbering Direction:</span>
-        <div className="grid grid-cols-2 gap-1 rounded-md shadow-sm">
-          <button
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <span className="text-sm text-gray-600">Zoom:</span>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleZoomOut}
+              className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md"
+              title="Zoom Out"
+            >
+              <ZoomOut className="w-4 h-4" />
+            </button>
+            <span className="text-sm text-gray-600 min-w-12 text-center">
+              {Math.round(zoom * 100)}%
+            </span>
+            <button
+              onClick={handleZoomIn}
+              className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md"
+              title="Zoom In"
+            >
+              <ZoomIn className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleFitToContainer}
+              className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md"
+              title="Fit to Container"
+            >
+              <Maximize className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+        <div className="flex items-center space-x-4">
+          <span className="text-sm text-gray-600">Numbering Direction:</span>
+          <div className="grid grid-cols-2 gap-1 rounded-md shadow-sm">
+            <button
             className={`px-3 py-2 text-sm font-medium ${
               numberingDirection === 'left'
                 ? 'bg-blue-600 text-white'
@@ -462,14 +519,17 @@ export function ScreenVisualization({
             Bottom→Top
           </button>
         </div>
+        </div>
       </div>
 
-      <div className="w-full overflow-x-auto">
+      <div className="w-full overflow-auto" ref={containerRef}>
         <div 
           className="relative inline-block bg-gray-100 rounded-lg p-8"
           style={{ 
-            minWidth: totalWidth + extraSpace.width + 32,
-            minHeight: totalHeight + extraSpace.height + HEADER_HEIGHT + 32
+            minWidth: (totalWidth + extraSpace.width + 32) * zoom,
+            minHeight: (totalHeight + extraSpace.height + HEADER_HEIGHT + 32) * zoom,
+            transform: `scale(${zoom})`,
+            transformOrigin: 'top left'
           }}
         >
           <div className="relative">

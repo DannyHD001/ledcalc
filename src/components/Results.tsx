@@ -129,6 +129,14 @@ export function Results({ panel, horizontalPanels, verticalPanels, logo, numberi
           <p className="mt-2 text-sm text-gray-600">
             Total power consumption
           </p>
+          <div className="mt-3 pt-3 border-t border-gray-200">
+            <p className="text-sm font-medium text-gray-700">
+              Power Lines: <span className="text-blue-600">{calculations.powerLines.needed}</span>
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              {calculations.powerLines.panelsPerLine} panels per line (max {calculations.powerLines.maxWattsPerLine}W each)
+            </p>
+          </div>
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow-sm">

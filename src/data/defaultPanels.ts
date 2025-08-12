@@ -25,6 +25,9 @@ export const DEFAULT_PANELS: Panel[] = [
       pixelsPerPort: 65536,
       maxPorts: 16
     },
+    powerConfig: {
+      maxWattsPerLine: 3600
+    },
     controllerOutputCapacity: 655360,
     flightCaseCapacity: 8
   },
@@ -51,6 +54,9 @@ export const DEFAULT_PANELS: Panel[] = [
     portConfig: {
       pixelsPerPort: 65536,
       maxPorts: 16
+    },
+    powerConfig: {
+      maxWattsPerLine: 3600
     },
     controllerOutputCapacity: 655360,
     flightCaseCapacity: 12
@@ -79,6 +85,9 @@ export const DEFAULT_PANELS: Panel[] = [
       pixelsPerPort: 65536,
       maxPorts: 16
     },
+    powerConfig: {
+      maxWattsPerLine: 3600
+    },
     controllerOutputCapacity: 655360,
     flightCaseCapacity: 4
   },
@@ -105,6 +114,9 @@ export const DEFAULT_PANELS: Panel[] = [
     portConfig: {
       pixelsPerPort: 65536,
       maxPorts: 16
+    },
+    powerConfig: {
+      maxWattsPerLine: 3600
     },
     controllerOutputCapacity: 655360,
     flightCaseCapacity: 10

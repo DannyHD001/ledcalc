@@ -239,6 +239,16 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
               <Text style={styles.value}>{calculations.controllers.totalPorts}</Text>
             </View>
           </View>
+          <View style={styles.row}>
+            <View style={styles.column}>
+              <Text style={styles.label}>Power Lines Required</Text>
+              <Text style={styles.value}>{calculations.powerLines.needed}</Text>
+            </View>
+            <View style={styles.column}>
+              <Text style={styles.label}>Panels per Power Line</Text>
+              <Text style={styles.value}>{calculations.powerLines.panelsPerLine} (max {calculations.powerLines.maxWattsPerLine}W)</Text>
+            </View>
+          </View>
         </View>
 
         <View style={styles.section}>

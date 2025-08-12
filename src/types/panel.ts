@@ -15,6 +15,10 @@ export interface PortConfig {
   maxPorts: number;
 }
 
+export interface PowerConfig {
+  maxWattsPerLine: number;
+}
+
 export interface Panel {
   id: string;
   name: string;
@@ -26,6 +30,7 @@ export interface Panel {
   power: number;
   headerConfig: HeaderConfig;
   portConfig?: PortConfig;
+  powerConfig?: PowerConfig;
   controllerOutputCapacity: number;
   flightCaseCapacity: number;
 }

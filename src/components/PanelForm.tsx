@@ -8,7 +8,7 @@ interface PanelFormProps {
 }
 
 // Form data type that allows string values for number inputs to preserve typing state
-type FormDataType = Omit<Panel, 'width' | 'height' | 'pixelPitch' | 'weight' | 'power' | 'portConfig' | 'headerConfig'> & {
+type FormDataType = Omit<Panel, 'width' | 'height' | 'pixelPitch' | 'weight' | 'power' | 'portConfig' | 'headerConfig' | 'powerConfig'> & {
   width: string | number;
   height: string | number;
   pixelPitch: string | number;
@@ -17,6 +17,9 @@ type FormDataType = Omit<Panel, 'width' | 'height' | 'pixelPitch' | 'weight' | '
   portConfig: {
     pixelsPerPort: string | number;
     maxPorts: string | number;
+  };
+  powerConfig: {
+    maxWattsPerLine: string | number;
   };
   headerConfig: {
     single: {
@@ -56,6 +59,9 @@ export function PanelForm({ panel, onSubmit, onCancel }: PanelFormProps) {
       pixelsPerPort: panel?.portConfig?.pixelsPerPort || 65536,
       maxPorts: panel?.portConfig?.maxPorts || 16
     },
+    powerConfig: {
+      maxWattsPerLine: panel?.powerConfig?.maxWattsPerLine || 3600
+    },
     controllerOutputCapacity: panel?.controllerOutputCapacity || 655360,
     flightCaseCapacity: panel?.flightCaseCapacity || 8
   });
@@ -80,6 +86,9 @@ export function PanelForm({ panel, onSubmit, onCancel }: PanelFormProps) {
       portConfig: {
         pixelsPerPort: safeParseNumber(formData.portConfig.pixelsPerPort),
         maxPorts: safeParseNumber(formData.portConfig.maxPorts)
+      },
+      powerConfig: {
+        maxWattsPerLine: safeParseNumber(formData.powerConfig.maxWattsPerLine)
       },
       headerConfig: {
         single: {
@@ -125,6 +134,24 @@ export function PanelForm({ panel, onSubmit, onCancel }: PanelFormProps) {
       ...prev,
       portConfig: {
         ...prev.portConfig,
+        [field]: value
+      }
+    }));
+  };
+
+  const handlePowerConfigChange = (field: keyof FormDataType['powerConfig'], value: string | number) => {
+    // For number inputs, preserve the string value during typing
+    if (typeof value === 'string') {
+      // Only allow valid decimal number patterns
+      if (!/^\d*\.?\d*$/.test(value)) {
+        return; // Don't update if invalid pattern
+      }
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      powerConfig: {
+        ...prev.powerConfig,
         [field]: value
       }
     }));
@@ -327,6 +354,28 @@ export function PanelForm({ panel, onSubmit, onCancel }: PanelFormProps) {
                     required
                   />
                 </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Power Configuration */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium text-gray-700">Power Configuration</h3>
+            <div className="grid grid-cols-1 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Max Watts Per Power Line
+                  <input
+                    type="text"
+                    value={formData.powerConfig.maxWattsPerLine}
+                    onChange={(e) => handlePowerConfigChange('maxWattsPerLine', e.target.value)}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    required
+                  />
+                </label>
+                <p className="mt-1 text-sm text-gray-500">
+                  Maximum watts that can be connected to a single power line (default: 3600W)
+                </p>
               </div>
             </div>
           </div>
