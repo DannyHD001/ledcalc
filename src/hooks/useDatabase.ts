@@ -6,6 +6,7 @@ export function useDatabase() {
   const [panels, setPanels] = useState<Panel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
   const [apiStatus, setApiStatus] = useState<'connected' | 'disconnected' | 'error'>('disconnected');
 
   const checkApiStatus = async () => {
@@ -49,7 +50,9 @@ export function useDatabase() {
       await loadPanels();
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save panel');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save panel';
+      setError(errorMessage);
+      setShowErrorModal(true);
       return false;
     } finally {
       setLoading(false);
@@ -63,11 +66,18 @@ export function useDatabase() {
       await loadPanels();
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete panel');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete panel';
+      setError(errorMessage);
+      setShowErrorModal(true);
       return false;
     } finally {
       setLoading(false);
     }
+  };
+
+  const clearError = () => {
+    setError(null);
+    setShowErrorModal(false);
   };
 
   useEffect(() => {
@@ -82,6 +92,8 @@ export function useDatabase() {
     panels,
     loading,
     error,
+    showErrorModal,
+    clearError,
     apiStatus,
     savePanel,
     removePanel,

@@ -14,16 +14,18 @@ type FormDataType = Omit<Controller, 'ports' | 'pixelsPerPort' | 'maxPixelsTotal
 };
 
 export function ControllerForm({ controller, onSubmit, onCancel }: ControllerFormProps) {
-  const [formData, setFormData] = useState<FormDataType>({
-    id: controller?.id || crypto.randomUUID(),
-    name: controller?.name || '',
-    manufacturer: controller?.manufacturer || '',
-    ports: controller?.ports || 16,
-    pixelsPerPort: controller?.pixelsPerPort || 65536,
-    maxPixelsTotal: controller?.maxPixelsTotal || undefined,
-    outputType: controller?.outputType || 'RJ45',
-    description: controller?.description || ''
+  const getInitialFormData = (controllerData?: Controller | null): FormDataType => ({
+    id: controllerData?.id || crypto.randomUUID(),
+    name: controllerData?.name || '',
+    manufacturer: controllerData?.manufacturer || '',
+    ports: controllerData?.ports || 16,
+    pixelsPerPort: controllerData?.pixelsPerPort || 65536,
+    maxPixelsTotal: controllerData?.maxPixelsTotal || undefined,
+    outputType: controllerData?.outputType || 'RJ45',
+    description: controllerData?.description || ''
   });
+
+  const [formData, setFormData] = useState<FormDataType>(() => getInitialFormData(controller));
 
   const safeParseNumber = (value: string | number): number => {
     if (typeof value === 'number') return value;

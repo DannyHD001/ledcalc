@@ -1,5 +1,6 @@
 import { Panel } from '../types/panel';
 import { Controller } from '../types/controller';
+import { DuplicateNameError } from '../types/errors';
 import { firestoreService } from './firestore';
 
 // Fallback storage service for offline mode
@@ -37,6 +38,16 @@ class LocalStorageService {
 
   async createPanel(panel: Omit<Panel, 'id'>): Promise<Panel> {
     const panels = this.getLocalPanels();
+    
+    // Check for duplicate panel name
+    const duplicateName = panels.find(p => 
+      p.name.toLowerCase() === panel.name.toLowerCase()
+    );
+    
+    if (duplicateName) {
+      throw new DuplicateNameError('Panel', panel.name);
+    }
+    
     const newPanel = { ...panel, id: Date.now().toString() };
     panels.push(newPanel);
     this.saveLocalPanels(panels);
@@ -82,6 +93,16 @@ class LocalStorageService {
 
   async createController(controller: Omit<Controller, 'id'>): Promise<Controller> {
     const controllers = this.getLocalControllers();
+    
+    // Check for duplicate controller name
+    const duplicateName = controllers.find(c => 
+      c.name.toLowerCase() === controller.name.toLowerCase()
+    );
+    
+    if (duplicateName) {
+      throw new DuplicateNameError('Controller', controller.name);
+    }
+    
     const newController = { ...controller, id: Date.now().toString() };
     controllers.push(newController);
     this.saveLocalControllers(controllers);

@@ -21,11 +21,13 @@ function App() {
   const [verticalPanels, setVerticalPanels] = useState(1);
   const [numberingDirection, setNumberingDirection] = useState<'left' | 'right' | 'top' | 'bottom'>('left');
   const [portStartOverrides, setPortStartOverrides] = useState<{[portNumber: number]: number | undefined}>({});
-  const { panels, loading, error, savePanel, removePanel } = useDatabase();
+  const { panels, loading, error, showErrorModal, clearError, savePanel, removePanel } = useDatabase();
   const { 
     controllers, 
     loading: controllerLoading, 
     error: controllerError, 
+    showErrorModal: showControllerErrorModal,
+    clearError: clearControllerError,
     saveController, 
     removeController 
   } = useControllerDatabase();
@@ -54,6 +56,8 @@ function App() {
                 onDeletePanel={removePanel}
                 loading={loading}
                 error={error}
+                showErrorModal={showErrorModal}
+                onClearError={clearError}
               />
               
               <ControllerSelector
@@ -64,6 +68,8 @@ function App() {
                 onDeleteController={removeController}
                 loading={controllerLoading}
                 error={controllerError}
+                showErrorModal={showControllerErrorModal}
+                onClearError={clearControllerError}
               />
               
               {/* Progress hints for user */}

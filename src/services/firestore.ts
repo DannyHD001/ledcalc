@@ -12,6 +12,7 @@ import {
 import { db, isFirebaseAvailable } from './firebase';
 import { Panel } from '../types/panel';
 import { Controller } from '../types/controller';
+import { DuplicateNameError } from '../types/errors';
 
 export class FirestoreService {
   private checkAvailability(): void {
@@ -74,7 +75,17 @@ export class FirestoreService {
   async createPanel(panel: Omit<Panel, 'id'>): Promise<Panel> {
     this.checkAvailability();
     try {
+      // Check for duplicate panel name
       const panelsRef = collection(db!, 'panels');
+      const existingPanels = await getDocs(panelsRef);
+      const duplicateName = existingPanels.docs.find(doc => 
+        doc.data().name.toLowerCase() === panel.name.toLowerCase()
+      );
+      
+      if (duplicateName) {
+        throw new DuplicateNameError('Panel', panel.name);
+      }
+
       const docRef = await addDoc(panelsRef, panel);
       console.log('✅ Panel created in Firestore with ID:', docRef.id);
       return {
@@ -165,7 +176,17 @@ export class FirestoreService {
   async createController(controller: Omit<Controller, 'id'>): Promise<Controller> {
     this.checkAvailability();
     try {
+      // Check for duplicate controller name
       const controllersRef = collection(db!, 'controllers');
+      const existingControllers = await getDocs(controllersRef);
+      const duplicateName = existingControllers.docs.find(doc => 
+        doc.data().name.toLowerCase() === controller.name.toLowerCase()
+      );
+      
+      if (duplicateName) {
+        throw new DuplicateNameError('Controller', controller.name);
+      }
+
       const docRef = await addDoc(controllersRef, controller);
       console.log('✅ Controller created in Firestore with ID:', docRef.id);
       return {

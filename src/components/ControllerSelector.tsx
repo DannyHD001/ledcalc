@@ -2,15 +2,18 @@ import { useState } from 'react';
 import { Controller } from '../types/controller';
 import { ControllerForm } from './ControllerForm';
 import { useAuth } from '../hooks/useAuth';
+import { ErrorModal } from './ErrorModal';
 
 interface ControllerSelectorProps {
   controllers: Controller[];
   selectedController: Controller | null;
   onControllerSelect: (controller: Controller | null) => void;
-  onSaveController: (controller: Controller) => void;
-  onDeleteController: (id: string) => void;
+  onSaveController: (controller: Controller) => Promise<boolean>;
+  onDeleteController: (id: string) => Promise<boolean>;
   loading: boolean;
   error: string | null;
+  showErrorModal: boolean;
+  onClearError: () => void;
 }
 
 export function ControllerSelector({
@@ -20,7 +23,9 @@ export function ControllerSelector({
   onSaveController,
   onDeleteController,
   loading,
-  error
+  error,
+  showErrorModal,
+  onClearError
 }: ControllerSelectorProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingController, setEditingController] = useState<Controller | null>(null);
@@ -43,13 +48,12 @@ export function ControllerSelector({
   };
 
   const handleFormSubmit = async (controller: Controller) => {
-    try {
-      await onSaveController(controller);
+    const success = await onSaveController(controller);
+    if (success) {
       setShowForm(false);
       setEditingController(null);
-    } catch (error) {
-      // Error is handled by the parent component
     }
+    // Keep form open on error so user can easily change just the name
   };
 
   const handleFormCancel = () => {
@@ -59,13 +63,9 @@ export function ControllerSelector({
 
   const handleDelete = async (controller: Controller) => {
     if (window.confirm(`Are you sure you want to delete "${controller.name}"?`)) {
-      try {
-        await onDeleteController(controller.id);
-        if (selectedController?.id === controller.id) {
-          onControllerSelect(null);
-        }
-      } catch (error) {
-        // Error is handled by the parent component
+      const success = await onDeleteController(controller.id);
+      if (success && selectedController?.id === controller.id) {
+        onControllerSelect(null);
       }
     }
   };
@@ -93,12 +93,6 @@ export function ControllerSelector({
           </button>
         )}
       </div>
-
-      {error && (
-        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-          {error}
-        </div>
-      )}
 
       <div className="mb-4">
         <input
@@ -184,12 +178,21 @@ export function ControllerSelector({
       )}
 
       {showForm && (
-        <ControllerForm
-          controller={editingController}
-          onSubmit={handleFormSubmit}
-          onCancel={handleFormCancel}
-        />
+        <div className="mt-4">
+          <ControllerForm
+            key={editingController?.id || 'new-controller'}
+            controller={editingController}
+            onSubmit={handleFormSubmit}
+            onCancel={handleFormCancel}
+          />
+        </div>
       )}
+      
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={onClearError}
+        message={error || ''}
+      />
     </div>
   );
 }

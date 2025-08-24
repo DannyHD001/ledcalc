@@ -2,6 +2,7 @@ import { Panel } from '../types/panel';
 import { Controller } from '../types/controller';
 import { firestoreService } from './firestore';
 import { isFirebaseAvailable } from './firebase';
+import { ValidationError, DuplicateNameError } from '../types/errors';
 
 // Fallback storage service for offline mode
 class LocalStorageService {
@@ -112,6 +113,13 @@ class LocalStorageService {
 
   async createController(controller: Omit<Controller, 'id'>): Promise<Controller> {
     const controllers = this.getLocalControllers();
+    
+    // Check for duplicate name
+    const existingController = controllers.find(c => c.name === controller.name);
+    if (existingController) {
+      throw new DuplicateNameError('Controller', controller.name);
+    }
+    
     const newController = { ...controller, id: this.generateUniqueId() };
     controllers.push(newController);
     this.saveLocalControllers(controllers);
@@ -172,6 +180,11 @@ class DatabaseService {
       console.log('✅ Firestore operation completed successfully');
       return result;
     } catch (error) {
+      // Don't fall back to localStorage for validation errors - show them to the user
+      if (error instanceof ValidationError) {
+        throw error;
+      }
+      
       console.warn('❌ Firestore operation failed, falling back to localStorage:', error);
       this.useFirestore = false;
       return localStorageOperation();

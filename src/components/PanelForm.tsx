@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Panel } from '../types/panel';
 
 interface PanelFormProps {
@@ -31,32 +31,52 @@ type FormDataType = Omit<Panel, 'width' | 'height' | 'pixelPitch' | 'weight' | '
 };
 
 export function PanelForm({ panel, onSubmit, onCancel }: PanelFormProps) {
-  const [formData, setFormData] = useState<FormDataType>({
-    id: panel?.id || crypto.randomUUID(),
-    name: panel?.name || '',
-    manufacturer: panel?.manufacturer || '',
-    width: panel?.width || 500,
-    height: panel?.height || 500,
-    pixelPitch: panel?.pixelPitch || 2.6,
-    weight: panel?.weight || 6.5,
-    power: panel?.power || 150,
+  const getInitialFormData = (panelData?: Panel | null): FormDataType => ({
+    id: panelData?.id || crypto.randomUUID(),
+    name: panelData?.name || '',
+    manufacturer: panelData?.manufacturer || '',
+    width: panelData?.width || 500,
+    height: panelData?.height || 500,
+    pixelPitch: panelData?.pixelPitch || 2.6,
+    weight: panelData?.weight || 6.5,
+    power: panelData?.power || 150,
     headerConfig: {
       single: {
-        weight: panel?.headerConfig?.single?.weight || 0.8,
-        points: panel?.headerConfig?.single?.points || 1
+        weight: panelData?.headerConfig?.single?.weight || 0.8,
+        points: panelData?.headerConfig?.single?.points || 1
       },
       double: {
-        weight: panel?.headerConfig?.double?.weight || 1.2,
-        points: panel?.headerConfig?.double?.points || 2
+        weight: panelData?.headerConfig?.double?.weight || 1.2,
+        points: panelData?.headerConfig?.double?.points || 2
       },
-      attachmentType: panel?.headerConfig?.attachmentType || 'shackle'
+      attachmentType: panelData?.headerConfig?.attachmentType || 'shackle'
     },
     powerConfig: {
-      maxWattsPerLine: panel?.powerConfig?.maxWattsPerLine || 3600
+      maxWattsPerLine: panelData?.powerConfig?.maxWattsPerLine || 3600
     },
-    controllerOutputCapacity: panel?.controllerOutputCapacity || 655360,
-    flightCaseCapacity: panel?.flightCaseCapacity || 8
+    controllerOutputCapacity: panelData?.controllerOutputCapacity || 655360,
+    flightCaseCapacity: panelData?.flightCaseCapacity || 8
   });
+
+  const [formData, setFormData] = useState<FormDataType>(() => {
+    // Try to restore from localStorage first, then use panel data or defaults
+    const savedData = localStorage.getItem('panel-form-draft');
+    if (savedData && !panel) {
+      try {
+        return JSON.parse(savedData);
+      } catch (e) {
+        // If parsing fails, fall back to default
+      }
+    }
+    return getInitialFormData(panel);
+  });
+
+  // Save form data to localStorage whenever it changes (for draft persistence)
+  useEffect(() => {
+    if (!panel) { // Only save drafts for new panels, not when editing existing ones
+      localStorage.setItem('panel-form-draft', JSON.stringify(formData));
+    }
+  }, [formData, panel]);
 
   const safeParseNumber = (value: string | number): number => {
     if (typeof value === 'number') return value;
