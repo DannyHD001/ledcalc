@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Panel } from '../types/panel';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { PanelForm } from './PanelForm';
+import { useAuth } from '../hooks/useAuth';
 
 interface PanelSelectorProps {
   panels: Panel[];
@@ -24,6 +25,7 @@ export function PanelSelector({
 }: PanelSelectorProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingPanel, setEditingPanel] = useState<Panel | null>(null);
+  const { isAuthenticated } = useAuth();
 
   if (loading) {
     return (
@@ -82,13 +84,15 @@ export function PanelSelector({
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-medium text-gray-900">LED Panel Selection</h2>
-        <button
-          onClick={() => setShowForm(true)}
-          className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
-        >
-          <PlusCircle className="w-4 h-4 mr-2" />
-          Add Panel
-        </button>
+        {isAuthenticated && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
+          >
+            <PlusCircle className="w-4 h-4 mr-2" />
+            Add Panel
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -104,24 +108,26 @@ export function PanelSelector({
           >
             <div className="flex justify-between items-start mb-2">
               <h3 className="text-sm font-medium text-gray-900">{panel.manufacturer} - {panel.name}</h3>
-              <div className="flex space-x-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingPanel(panel);
-                    setShowForm(true);
-                  }}
-                  className="text-gray-400 hover:text-gray-500"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={(e) => handleDeletePanel(panel.id, e)}
-                  className="text-gray-400 hover:text-red-500"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
+              {isAuthenticated && (
+                <div className="flex space-x-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingPanel(panel);
+                      setShowForm(true);
+                    }}
+                    className="text-gray-400 hover:text-gray-500"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={(e) => handleDeletePanel(panel.id, e)}
+                    className="text-gray-400 hover:text-red-500"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <div>

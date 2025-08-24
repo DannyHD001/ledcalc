@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Panel } from '../types/panel';
-import { getAllPanels, addPanel, deletePanel, checkConnection } from '../services/db';
+import { databaseService } from '../services/database';
 
 export function useDatabase() {
   const [panels, setPanels] = useState<Panel[]>([]);
@@ -10,8 +10,9 @@ export function useDatabase() {
 
   const checkApiStatus = async () => {
     try {
-      const isConnected = await checkConnection();
-      setApiStatus(isConnected ? 'connected' : 'error');
+      // Try to get panels to test Firestore connection
+      await databaseService.getPanels();
+      setApiStatus(databaseService.isUsingFirestore() ? 'connected' : 'disconnected');
     } catch {
       setApiStatus('error');
     }
@@ -20,10 +21,13 @@ export function useDatabase() {
   const loadPanels = async () => {
     try {
       setLoading(true);
-      const loadedPanels = await getAllPanels();
+      console.log('🔄 useDatabase: Loading panels from database...');
+      const loadedPanels = await databaseService.getPanels();
+      console.log(`✅ useDatabase: Loaded ${loadedPanels.length} panels`);
       setPanels(loadedPanels);
       setError(null);
     } catch (err) {
+      console.error('❌ useDatabase: Failed to load panels:', err);
       setError(err instanceof Error ? err.message : 'Failed to load panels');
       setPanels([]);
     } finally {
@@ -34,7 +38,14 @@ export function useDatabase() {
   const savePanel = async (panel: Panel): Promise<boolean> => {
     try {
       setLoading(true);
-      await addPanel(panel);
+      const existingPanel = panels.find(p => p.id === panel.id);
+      
+      if (existingPanel) {
+        await databaseService.updatePanel(panel.id, panel);
+      } else {
+        await databaseService.createPanel(panel);
+      }
+      
       await loadPanels();
       return true;
     } catch (err) {
@@ -48,7 +59,7 @@ export function useDatabase() {
   const removePanel = async (id: string): Promise<boolean> => {
     try {
       setLoading(true);
-      await deletePanel(id);
+      await databaseService.deletePanel(id);
       await loadPanels();
       return true;
     } catch (err) {

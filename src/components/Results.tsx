@@ -1,4 +1,5 @@
 import { Panel } from '../types/panel';
+import { Controller } from '../types/controller';
 import { Download, Monitor, Weight, Cpu, Box, Network, Grid } from 'lucide-react';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import { ResultsPDF } from './ResultsPDF';
@@ -7,6 +8,7 @@ import { usePanelCalculator } from '../hooks/usePanelCalculator';
 
 interface ResultsProps {
   panel: Panel | null;
+  controller?: Controller | null;
   horizontalPanels: number;
   verticalPanels: number;
   logo?: string;
@@ -14,7 +16,7 @@ interface ResultsProps {
   onNumberingDirectionChange: (direction: 'left' | 'right' | 'top' | 'bottom') => void;
 }
 
-export function Results({ panel, horizontalPanels, verticalPanels, logo, numberingDirection, onNumberingDirectionChange }: ResultsProps) {
+export function Results({ panel, controller, horizontalPanels, verticalPanels, logo, numberingDirection, onNumberingDirectionChange }: ResultsProps) {
   if (!panel) {
     return (
       <div className="p-6">
@@ -23,7 +25,12 @@ export function Results({ panel, horizontalPanels, verticalPanels, logo, numberi
     );
   }
 
-  const calculations = usePanelCalculator({ panel, horizontalPanels, verticalPanels });
+  const calculations = usePanelCalculator({ 
+    panel, 
+    controller: controller || undefined, 
+    horizontalPanels, 
+    verticalPanels 
+  });
   const totalPanels = horizontalPanels * verticalPanels;
 
   return (
@@ -52,6 +59,25 @@ export function Results({ panel, horizontalPanels, verticalPanels, logo, numberi
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {controller && (
+          <div className="bg-white p-6 rounded-lg shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Controller</h3>
+              <Cpu className="w-6 h-6 text-blue-600" />
+            </div>
+            <p className="text-xl font-bold text-blue-600">
+              {controller.manufacturer} {controller.name}
+            </p>
+            <div className="mt-2 space-y-1 text-sm text-gray-600">
+              <p>{controller.ports} ports × {controller.pixelsPerPort.toLocaleString()} pixels</p>
+              <p>Output: {controller.outputType}</p>
+              {controller.maxPixelsTotal && (
+                <p>Max: {controller.maxPixelsTotal.toLocaleString()} pixels</p>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-800">Screen Size</h3>
@@ -157,6 +183,7 @@ export function Results({ panel, horizontalPanels, verticalPanels, logo, numberi
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Screen Visualization</h3>
         <ScreenVisualization
           panel={panel}
+          controller={controller}
           horizontalPanels={horizontalPanels}
           verticalPanels={verticalPanels}
           numberingDirection={numberingDirection}

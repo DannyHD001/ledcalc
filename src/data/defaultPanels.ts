@@ -21,10 +21,6 @@ export const DEFAULT_PANELS: Panel[] = [
       },
       attachmentType: 'shackle'
     },
-    portConfig: {
-      pixelsPerPort: 65536,
-      maxPorts: 16
-    },
     powerConfig: {
       maxWattsPerLine: 3600
     },
@@ -50,10 +46,6 @@ export const DEFAULT_PANELS: Panel[] = [
         points: 2
       },
       attachmentType: 'shackle'
-    },
-    portConfig: {
-      pixelsPerPort: 65536,
-      maxPorts: 16
     },
     powerConfig: {
       maxWattsPerLine: 3600
@@ -81,10 +73,6 @@ export const DEFAULT_PANELS: Panel[] = [
       },
       attachmentType: 'shackle'
     },
-    portConfig: {
-      pixelsPerPort: 65536,
-      maxPorts: 16
-    },
     powerConfig: {
       maxWattsPerLine: 3600
     },
@@ -110,10 +98,6 @@ export const DEFAULT_PANELS: Panel[] = [
         points: 2
       },
       attachmentType: 'shackle'
-    },
-    portConfig: {
-      pixelsPerPort: 65536,
-      maxPorts: 16
     },
     powerConfig: {
       maxWattsPerLine: 3600

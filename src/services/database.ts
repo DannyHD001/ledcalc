@@ -1,169 +1,277 @@
-import mysql from 'mysql2/promise';
 import { Panel } from '../types/panel';
+import { Controller } from '../types/controller';
+import { firestoreService } from './firestore';
 
-const dbConfig = {
-  host: 'avteknikk.com',
-  user: 'avteknikk_comledcalc',
-  password: '@CalcLED24',
-  database: 'avteknikk_comledcalc',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-  enableKeepAlive: true,
-  keepAliveInitialDelay: 0
-};
+// Fallback storage service for offline mode
+class LocalStorageService {
+  private PANELS_KEY = 'ledcalc_panels';
+  private CONTROLLERS_KEY = 'ledcalc_controllers';
 
-let pool: mysql.Pool | null = null;
-
-export async function initializePool() {
-  try {
-    if (!pool) {
-      pool = mysql.createPool(dbConfig);
-      console.log('Database pool initialized successfully');
-      
-      // Test the connection
-      const connection = await pool.getConnection();
-      await connection.ping();
-      console.log('Successfully connected to database');
-      connection.release();
-    }
-    return pool;
-  } catch (error) {
-    console.error('Failed to initialize database pool:', error);
-    throw error;
-  }
-}
-
-export async function executeQuery<T>(
-  query: string, 
-  params?: any[]
-): Promise<T> {
-  if (!pool) {
-    await initializePool();
-  }
-
-  try {
-    const [results] = await pool!.execute(query, params);
-    return results as T;
-  } catch (error) {
-    console.error('Database query failed:', error);
-    throw error;
-  }
-}
-
-export async function initializeDatabase() {
-  try {
-    await executeQuery(`
-      CREATE TABLE IF NOT EXISTS panels (
-        id VARCHAR(36) PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        manufacturer VARCHAR(255) NOT NULL,
-        width INT NOT NULL,
-        height INT NOT NULL,
-        pixelPitch DECIMAL(10,2) NOT NULL,
-        weight DECIMAL(10,2) NOT NULL,
-        power INT NOT NULL,
-        headerConfig JSON NOT NULL,
-        controllerOutputCapacity INT NOT NULL,
-        flightCaseCapacity INT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      )
-    `);
+  private getLocalPanels(): Panel[] {
+    const panels = localStorage.getItem(this.PANELS_KEY);
+    const parsedPanels = panels ? JSON.parse(panels) : [];
     
-    console.log('Database initialized successfully');
-  } catch (error) {
-    console.error('Failed to initialize database:', error);
-    throw error;
-  }
-}
-
-export async function getAllPanels(): Promise<Panel[]> {
-  try {
-    const panels = await executeQuery<any[]>('SELECT * FROM panels');
-    return panels.map(row => ({
-      ...row,
-      headerConfig: typeof row.headerConfig === 'string' 
-        ? JSON.parse(row.headerConfig)
-        : row.headerConfig
-    }));
-  } catch (error) {
-    console.error('Failed to fetch panels:', error);
-    throw error;
-  }
-}
-
-export async function addPanel(panel: Panel): Promise<void> {
-  try {
-    await executeQuery(
-      `INSERT INTO panels (
-        id, name, manufacturer, width, height, pixelPitch, weight, power,
-        headerConfig, controllerOutputCapacity, flightCaseCapacity
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        panel.id,
-        panel.name,
-        panel.manufacturer || '',
-        panel.width,
-        panel.height,
-        panel.pixelPitch,
-        panel.weight,
-        panel.power,
-        JSON.stringify(panel.headerConfig),
-        panel.controllerOutputCapacity,
-        panel.flightCaseCapacity
-      ]
+    // Remove duplicates based on ID
+    const uniquePanels = parsedPanels.filter((panel: Panel, index: number, arr: Panel[]) => 
+      arr.findIndex(p => p.id === panel.id) === index
     );
-  } catch (error) {
-    console.error('Failed to add panel:', error);
-    throw error;
+    
+    // Save back if we removed duplicates
+    if (uniquePanels.length !== parsedPanels.length) {
+      this.saveLocalPanels(uniquePanels);
+    }
+    
+    return uniquePanels;
   }
-}
 
-export async function updatePanel(panel: Panel): Promise<void> {
-  try {
-    await executeQuery(
-      `UPDATE panels SET
-        name = ?,
-        manufacturer = ?,
-        width = ?,
-        height = ?,
-        pixelPitch = ?,
-        weight = ?,
-        power = ?,
-        headerConfig = ?,
-        controllerOutputCapacity = ?,
-        flightCaseCapacity = ?,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?`,
-      [
-        panel.name,
-        panel.manufacturer || '',
-        panel.width,
-        panel.height,
-        panel.pixelPitch,
-        panel.weight,
-        panel.power,
-        JSON.stringify(panel.headerConfig),
-        panel.controllerOutputCapacity,
-        panel.flightCaseCapacity,
-        panel.id
-      ]
+  private saveLocalPanels(panels: Panel[]): void {
+    localStorage.setItem(this.PANELS_KEY, JSON.stringify(panels));
+  }
+
+  private getLocalControllers(): Controller[] {
+    const controllers = localStorage.getItem(this.CONTROLLERS_KEY);
+    const parsedControllers = controllers ? JSON.parse(controllers) : [];
+    
+    // Remove duplicates based on ID
+    const uniqueControllers = parsedControllers.filter((controller: Controller, index: number, arr: Controller[]) => 
+      arr.findIndex(c => c.id === controller.id) === index
     );
-  } catch (error) {
-    console.error('Failed to update panel:', error);
-    throw error;
+    
+    // Save back if we removed duplicates
+    if (uniqueControllers.length !== parsedControllers.length) {
+      this.saveLocalControllers(uniqueControllers);
+    }
+    
+    return uniqueControllers;
+  }
+
+  private saveLocalControllers(controllers: Controller[]): void {
+    localStorage.setItem(this.CONTROLLERS_KEY, JSON.stringify(controllers));
+  }
+
+  // Helper function to generate unique IDs
+  private generateUniqueId(): string {
+    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  // Panel methods
+  async getPanels(): Promise<Panel[]> {
+    return this.getLocalPanels();
+  }
+
+  async getPanelById(id: string): Promise<Panel | null> {
+    const panels = this.getLocalPanels();
+    return panels.find(panel => panel.id === id) || null;
+  }
+
+  async createPanel(panel: Omit<Panel, 'id'>): Promise<Panel> {
+    const panels = this.getLocalPanels();
+    const newPanel = { ...panel, id: this.generateUniqueId() };
+    panels.push(newPanel);
+    this.saveLocalPanels(panels);
+    return newPanel;
+  }
+
+  async updatePanel(id: string, panelUpdate: Partial<Panel>): Promise<Panel> {
+    const panels = this.getLocalPanels();
+    const index = panels.findIndex(panel => panel.id === id);
+    if (index === -1) throw new Error('Panel not found');
+    
+    panels[index] = { ...panels[index], ...panelUpdate };
+    this.saveLocalPanels(panels);
+    return panels[index];
+  }
+
+  async deletePanel(id: string): Promise<void> {
+    const panels = this.getLocalPanels();
+    const filtered = panels.filter(panel => panel.id !== id);
+    this.saveLocalPanels(filtered);
+  }
+
+  async searchPanels(searchTerm: string): Promise<Panel[]> {
+    const panels = this.getLocalPanels();
+    if (!searchTerm.trim()) return panels;
+    
+    const term = searchTerm.toLowerCase();
+    return panels.filter(panel => 
+      panel.name.toLowerCase().includes(term) ||
+      panel.manufacturer.toLowerCase().includes(term)
+    );
+  }
+
+  // Controller methods
+  async getControllers(): Promise<Controller[]> {
+    return this.getLocalControllers();
+  }
+
+  async getControllerById(id: string): Promise<Controller | null> {
+    const controllers = this.getLocalControllers();
+    return controllers.find(controller => controller.id === id) || null;
+  }
+
+  async createController(controller: Omit<Controller, 'id'>): Promise<Controller> {
+    const controllers = this.getLocalControllers();
+    const newController = { ...controller, id: this.generateUniqueId() };
+    controllers.push(newController);
+    this.saveLocalControllers(controllers);
+    return newController;
+  }
+
+  async updateController(id: string, controllerUpdate: Partial<Controller>): Promise<Controller> {
+    const controllers = this.getLocalControllers();
+    const index = controllers.findIndex(controller => controller.id === id);
+    if (index === -1) throw new Error('Controller not found');
+    
+    controllers[index] = { ...controllers[index], ...controllerUpdate };
+    this.saveLocalControllers(controllers);
+    return controllers[index];
+  }
+
+  async deleteController(id: string): Promise<void> {
+    const controllers = this.getLocalControllers();
+    const filtered = controllers.filter(controller => controller.id !== id);
+    this.saveLocalControllers(filtered);
+  }
+
+  async searchControllers(searchTerm: string): Promise<Controller[]> {
+    const controllers = this.getLocalControllers();
+    if (!searchTerm.trim()) return controllers;
+    
+    const term = searchTerm.toLowerCase();
+    return controllers.filter(controller => 
+      controller.name.toLowerCase().includes(term) ||
+      controller.manufacturer.toLowerCase().includes(term) ||
+      (controller.outputType && controller.outputType.toLowerCase().includes(term))
+    );
   }
 }
 
-export async function deletePanel(id: string): Promise<void> {
-  try {
-    await executeQuery('DELETE FROM panels WHERE id = ?', [id]);
-  } catch (error) {
-    console.error('Failed to delete panel:', error);
-    throw error;
+// Database service with Firestore primary and localStorage fallback
+class DatabaseService {
+  private localStorageService = new LocalStorageService();
+  private useFirestore = true; // Try Firestore first, fallback to localStorage on error
+  private firestoreInitialized = false;
+
+  private async withFallback<T>(
+    firestoreOperation: () => Promise<T>,
+    localStorageOperation: () => Promise<T>
+  ): Promise<T> {
+    if (!this.useFirestore) {
+      console.log('🔄 Using localStorage mode (Firestore disabled after failure)');
+      return localStorageOperation();
+    }
+
+    console.log('🔄 Attempting Firestore operation...');
+    try {
+      const result = await firestoreOperation();
+      if (!this.firestoreInitialized) {
+        console.log('✅ Firestore connected successfully - data will be synced to cloud');
+        this.firestoreInitialized = true;
+      }
+      console.log('✅ Firestore operation completed successfully');
+      return result;
+    } catch (error) {
+      console.warn('❌ Firestore operation failed, falling back to localStorage:', error);
+      this.useFirestore = false;
+      return localStorageOperation();
+    }
+  }
+
+  // Panel operations
+  async getPanels(): Promise<Panel[]> {
+    return this.withFallback(
+      () => firestoreService.getPanels(),
+      () => this.localStorageService.getPanels()
+    );
+  }
+
+  async getPanelById(id: string): Promise<Panel | null> {
+    return this.withFallback(
+      () => firestoreService.getPanelById(id),
+      () => this.localStorageService.getPanelById(id)
+    );
+  }
+
+  async createPanel(panel: Omit<Panel, 'id'>): Promise<Panel> {
+    return this.withFallback(
+      () => firestoreService.createPanel(panel),
+      () => this.localStorageService.createPanel(panel)
+    );
+  }
+
+  async updatePanel(id: string, panel: Partial<Panel>): Promise<Panel> {
+    return this.withFallback(
+      () => firestoreService.updatePanel(id, panel),
+      () => this.localStorageService.updatePanel(id, panel)
+    );
+  }
+
+  async deletePanel(id: string): Promise<void> {
+    return this.withFallback(
+      () => firestoreService.deletePanel(id),
+      () => this.localStorageService.deletePanel(id)
+    );
+  }
+
+  async searchPanels(searchTerm: string): Promise<Panel[]> {
+    return this.withFallback(
+      () => firestoreService.searchPanels(searchTerm),
+      () => this.localStorageService.searchPanels(searchTerm)
+    );
+  }
+
+  // Controller operations
+  async getControllers(): Promise<Controller[]> {
+    return this.withFallback(
+      () => firestoreService.getControllers(),
+      () => this.localStorageService.getControllers()
+    );
+  }
+
+  async getControllerById(id: string): Promise<Controller | null> {
+    return this.withFallback(
+      () => firestoreService.getControllerById(id),
+      () => this.localStorageService.getControllerById(id)
+    );
+  }
+
+  async createController(controller: Omit<Controller, 'id'>): Promise<Controller> {
+    return this.withFallback(
+      () => firestoreService.createController(controller),
+      () => this.localStorageService.createController(controller)
+    );
+  }
+
+  async updateController(id: string, controller: Partial<Controller>): Promise<Controller> {
+    return this.withFallback(
+      () => firestoreService.updateController(id, controller),
+      () => this.localStorageService.updateController(id, controller)
+    );
+  }
+
+  async deleteController(id: string): Promise<void> {
+    return this.withFallback(
+      () => firestoreService.deleteController(id),
+      () => this.localStorageService.deleteController(id)
+    );
+  }
+
+  async searchControllers(searchTerm: string): Promise<Controller[]> {
+    return this.withFallback(
+      () => firestoreService.searchControllers(searchTerm),
+      () => this.localStorageService.searchControllers(searchTerm)
+    );
+  }
+
+  // Check if using Firestore
+  isUsingFirestore(): boolean {
+    return this.useFirestore;
+  }
+
+  // Force enable Firestore (for retry scenarios)
+  enableFirestore(): void {
+    this.useFirestore = true;
   }
 }
 
-// Initialize the database when the module is imported
-initializeDatabase().catch(console.error);
+export const databaseService = new DatabaseService();

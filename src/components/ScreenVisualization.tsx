@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Panel } from '../types/panel';
+import { Controller } from '../types/controller';
 import { Circle, Wrench, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 
 interface ScreenVisualizationProps {
   panel: Panel | null;
+  controller?: Controller | null;
   horizontalPanels: number;
   verticalPanels: number;
   numberingDirection: 'left' | 'right' | 'top' | 'bottom';
@@ -12,6 +14,7 @@ interface ScreenVisualizationProps {
 
 export function ScreenVisualization({ 
   panel,
+  controller,
   horizontalPanels = 0,
   verticalPanels = 0,
   numberingDirection,
@@ -19,19 +22,23 @@ export function ScreenVisualization({
 }: ScreenVisualizationProps) {
   const [showProcessorLines, setShowProcessorLines] = useState(true);
   const [zoom, setZoom] = useState(1);
+  const [showPortOverrides, setShowPortOverrides] = useState(false);
+  const [portStartOverrides, setPortStartOverrides] = useState<{[portNumber: number]: number | undefined}>({});
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Get processor configuration from panel
+  // Get processor configuration - using controller data if available, otherwise defaults
   const getProcessorConfig = () => {
-    if (!panel || !panel.portConfig) {
+    if (controller) {
       return {
-        pixelsPerPort: 500000, // Default fallback
-        maxPorts: 8
+        pixelsPerPort: controller.pixelsPerPort,
+        maxPorts: controller.ports
       };
     }
+    
+    // Fallback defaults when no controller is selected
     return {
-      pixelsPerPort: panel.portConfig.pixelsPerPort,
-      maxPorts: panel.portConfig.maxPorts
+      pixelsPerPort: 500000, // Default fallback
+      maxPorts: 8
     };
   };
 
@@ -256,26 +263,63 @@ export function ScreenVisualization({
 
     const groups: PanelNode[][] = [];
     let i = 0;
-    while (i < snakeSequence.length && groups.length < processorConfig.maxPorts) {
-      const start = i;
-      let lastBoundaryEnd = -1; // exclusive index after boundary panel
-      let count = 0;
-      while (i < snakeSequence.length && count < capacity) {
-        const p = snakeSequence[i];
-        count++;
-        if (isBoundaryPanel(p.row, p.col)) {
-          lastBoundaryEnd = i + 1;
-          if (count === capacity) {
-            i++;
-            break;
-          }
+    
+    // Check if we have any port overrides configured
+    const hasOverrides = Object.values(portStartOverrides).some(val => val !== undefined);
+    
+    if (hasOverrides) {
+      // Use override logic: create groups based on user-defined starting panels
+      const overrideEntries = Object.entries(portStartOverrides)
+        .filter(([_, startPanel]) => startPanel !== undefined)
+        .map(([portStr, startPanel]) => ({
+          port: parseInt(portStr),
+          startPanel: startPanel!
+        }))
+        .sort((a, b) => a.startPanel - b.startPanel); // Sort by starting panel number
+      
+      overrideEntries.forEach((entry, idx) => {
+        const startPanelIndex = snakeSequence.findIndex(p => p.panelNumber === entry.startPanel);
+        if (startPanelIndex === -1) return; // Invalid panel number
+        
+        // Calculate end index for this group
+        let endIndex;
+        if (idx < overrideEntries.length - 1) {
+          // Not the last group - end before the next override starts
+          const nextStartPanelIndex = snakeSequence.findIndex(p => p.panelNumber === overrideEntries[idx + 1].startPanel);
+          endIndex = nextStartPanelIndex === -1 ? snakeSequence.length : nextStartPanelIndex;
+        } else {
+          // Last group - take all remaining panels
+          endIndex = snakeSequence.length;
         }
-        i++;
+        
+        // Add the group if it has panels
+        if (startPanelIndex < endIndex) {
+          groups.push(snakeSequence.slice(startPanelIndex, endIndex));
+        }
+      });
+    } else {
+      // Use original automatic logic
+      while (i < snakeSequence.length && groups.length < processorConfig.maxPorts) {
+        const start = i;
+        let lastBoundaryEnd = -1; // exclusive index after boundary panel
+        let count = 0;
+        while (i < snakeSequence.length && count < capacity) {
+          const p = snakeSequence[i];
+          count++;
+          if (isBoundaryPanel(p.row, p.col)) {
+            lastBoundaryEnd = i + 1;
+            if (count === capacity) {
+              i++;
+              break;
+            }
+          }
+          i++;
+        }
+        const end = lastBoundaryEnd !== -1 ? lastBoundaryEnd : i;
+        if (end <= start) break;
+        groups.push(snakeSequence.slice(start, end));
+        i = end;
       }
-      const end = lastBoundaryEnd !== -1 ? lastBoundaryEnd : i;
-      if (end <= start) break;
-      groups.push(snakeSequence.slice(start, end));
-      i = end;
     }
 
     // Helper to build path that ends on the last panel only
@@ -375,10 +419,12 @@ export function ScreenVisualization({
   const handleFitToContainer = () => setZoom(calculateFitZoom());
 
   return (
-    <div className="space-y-4">
-      {/* Processor Configuration */}
+    <div className="space-y-3">
+      {/* Controller/Port Configuration */}
       <div className="bg-gray-50 p-4 rounded-lg border">
-        <h4 className="text-sm font-semibold text-gray-700 mb-3">Port Configuration</h4>
+        <h4 className="text-sm font-semibold text-gray-700 mb-3">
+          {controller ? `Controller: ${controller.manufacturer} ${controller.name}` : 'Port Configuration (Default)'}
+        </h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
@@ -393,7 +439,7 @@ export function ScreenVisualization({
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Max Ports Per Controller
+              {controller ? 'Total Ports' : 'Max Ports Per Controller'}
             </label>
             <input
               type="number"
@@ -419,6 +465,29 @@ export function ScreenVisualization({
           </div>
         </div>
         
+        {controller && (
+          <div className="mt-3 p-3 bg-green-50 rounded-md">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+              <div>
+                <span className="font-medium text-green-700">Output Type:</span>
+                <span className="ml-1 text-green-600">{controller.outputType}</span>
+              </div>
+              {controller.maxPixelsTotal && (
+                <div>
+                  <span className="font-medium text-green-700">Max Total Pixels:</span>
+                  <span className="ml-1 text-green-600">{controller.maxPixelsTotal.toLocaleString()}</span>
+                </div>
+              )}
+              {controller.description && (
+                <div className="col-span-2 md:col-span-3">
+                  <span className="font-medium text-green-700">Description:</span>
+                  <span className="ml-1 text-green-600">{controller.description}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
         {/* Line calculation results */}
         {lineCalc.linesNeeded > 0 && (
           <div className="mt-3 p-3 bg-blue-50 rounded-md">
@@ -439,6 +508,58 @@ export function ScreenVisualization({
                 <span className="font-medium text-blue-700">Total Pixels:</span>
                 <span className="ml-1 text-blue-600">{Math.round(lineCalc.totalPixels || 0)}</span>
               </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Port Override Controls */}
+      <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-sm font-semibold text-yellow-800">Port Start Overrides</h4>
+          <button
+            onClick={() => setShowPortOverrides(!showPortOverrides)}
+            className={`px-3 py-1 text-xs font-medium rounded-md ${
+              showPortOverrides
+                ? 'bg-yellow-600 text-white'
+                : 'bg-white text-yellow-700 border border-yellow-300'
+            }`}
+          >
+            {showPortOverrides ? 'Hide' : 'Show'} Overrides
+          </button>
+        </div>
+        
+        {showPortOverrides && (
+          <div className="space-y-3">
+            <p className="text-xs text-yellow-700">
+              Override which panel number each controller port starts on. Leave empty to use automatic calculation.
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {Array.from({ length: processorConfig.maxPorts }, (_, i) => {
+                const portNumber = i + 1;
+                return (
+                  <div key={portNumber}>
+                    <label className="block text-xs font-medium text-yellow-700 mb-1">
+                      Port {portNumber} starts at panel:
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max={horizontalPanels * verticalPanels}
+                      value={portStartOverrides[portNumber] || ''}
+                      onChange={(e) => {
+                        const value = e.target.value ? parseInt(e.target.value) : undefined;
+                        setPortStartOverrides(prev => ({
+                          ...prev,
+                          [portNumber]: value
+                        }));
+                      }}
+                      placeholder="Auto"
+                      className="w-full px-2 py-1 text-xs border border-yellow-300 rounded-md focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500"
+                    />
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -522,14 +643,21 @@ export function ScreenVisualization({
         </div>
       </div>
 
-      <div className="w-full overflow-auto" ref={containerRef}>
+      <div 
+        className="w-full relative overflow-auto" 
+        ref={containerRef} 
+        style={{ 
+          height: (totalHeight + HEADER_HEIGHT + 16) * zoom,
+          maxHeight: '70vh'
+        }}
+      >
         <div 
-          className="relative inline-block bg-gray-100 rounded-lg p-8"
+          className="bg-gray-100 rounded-lg p-2"
           style={{ 
-            minWidth: (totalWidth + extraSpace.width + 32) * zoom,
-            minHeight: (totalHeight + extraSpace.height + HEADER_HEIGHT + 32) * zoom,
             transform: `scale(${zoom})`,
-            transformOrigin: 'top left'
+            transformOrigin: 'top left',
+            width: totalWidth + 16, // 16px for padding
+            height: totalHeight + HEADER_HEIGHT + 16 // 16px for padding
           }}
         >
           <div className="relative">
@@ -578,14 +706,14 @@ export function ScreenVisualization({
               ))}
             </div>
             {/* Processor lines overlay */}
-            <div style={{ width: totalWidth + extraSpace.width, height: totalHeight + extraSpace.height }}>
+            <div style={{ width: totalWidth, height: totalHeight }}>
               {renderProcessorLines()}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="text-sm text-gray-500 mt-2">
+      <div className="text-sm text-gray-500">
         <p>Panel numbers shown in center, row/column coordinates in top-left (R: Row, C: Column)</p>
         <p>Snake patterns: Continuous zigzag numbering following physical panel connections</p>
         <p>L→R: Start left, alternate directions each row | R→L: Start right, alternate directions each row</p>

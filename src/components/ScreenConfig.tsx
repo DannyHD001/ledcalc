@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Panel } from '../types/panel';
-import { Info } from 'lucide-react';
+import { Info, Calculator } from 'lucide-react';
 
 interface ScreenConfigProps {
   horizontalPanels: number;
@@ -27,20 +27,17 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
   const [horizontalPanelInput, setHorizontalPanelInput] = useState<string>(horizontalPanels.toString());
   const [verticalPanelInput, setVerticalPanelInput] = useState<string>(verticalPanels.toString());
   
-  // Track if user is actively typing to avoid overriding their input
-  const [isUserTyping, setIsUserTyping] = useState<{ width: boolean; height: boolean }>({ width: false, height: false });
+  // Track if calculations are pending
+  const [calculationsPending, setCalculationsPending] = useState<boolean>(false);
 
-  // Update dimension inputs when panel counts change (but only if user isn't actively typing)
+  // Update dimension inputs when panel counts change
   useEffect(() => {
-    if (!isUserTyping.width) {
-      setDesiredWidth(((horizontalPanels * selectedPanel.width) / 10).toString());
-    }
-    if (!isUserTyping.height) {
-      setDesiredHeight(((verticalPanels * selectedPanel.height) / 10).toString());
-    }
+    setDesiredWidth(((horizontalPanels * selectedPanel.width) / 10).toString());
+    setDesiredHeight(((verticalPanels * selectedPanel.height) / 10).toString());
     setHorizontalPanelInput(horizontalPanels.toString());
     setVerticalPanelInput(verticalPanels.toString());
-  }, [horizontalPanels, verticalPanels, selectedPanel, isUserTyping]);
+    setCalculationsPending(false);
+  }, [horizontalPanels, verticalPanels, selectedPanel]);
 
   const handlePanelCountChange = (value: string, type: 'horizontal' | 'vertical') => {
     // Only allow valid integer patterns, but also allow empty string
@@ -75,9 +72,6 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
       return; // Don't update if invalid pattern
     }
 
-    // Mark that user is actively typing in this field
-    setIsUserTyping(prev => ({ ...prev, [dimension]: true }));
-
     // Update the display value immediately
     if (dimension === 'width') {
       setDesiredWidth(value);
@@ -85,33 +79,33 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
       setDesiredHeight(value);
     }
 
-    // Only calculate panels if we have a valid number
-    if (value !== '' && !isNaN(parseFloat(value))) {
-      const numValue = parseFloat(value);
+    // Mark that calculations are pending
+    setCalculationsPending(true);
+  };
+
+  const calculatePanelsFromDimensions = () => {
+    // Calculate horizontal panels from width
+    if (desiredWidth !== '' && !isNaN(parseFloat(desiredWidth))) {
+      const numValue = parseFloat(desiredWidth);
       const mmValue = numValue * 10; // Convert cm to mm
-      const panelSize = dimension === 'width' ? selectedPanel.width : selectedPanel.height;
-      const panels = Math.max(1, Math.round(mmValue / panelSize));
-      
-      if (dimension === 'width') {
-        onHorizontalChange(panels);
-      } else {
-        onVerticalChange(panels);
-      }
+      const panels = Math.max(1, Math.round(mmValue / selectedPanel.width));
+      onHorizontalChange(panels);
     }
 
-    // Clear the typing flag after a short delay to allow useEffect to resume normal operation
-    setTimeout(() => {
-      setIsUserTyping(prev => ({ ...prev, [dimension]: false }));
-    }, 1000);
+    // Calculate vertical panels from height
+    if (desiredHeight !== '' && !isNaN(parseFloat(desiredHeight))) {
+      const numValue = parseFloat(desiredHeight);
+      const mmValue = numValue * 10; // Convert cm to mm
+      const panels = Math.max(1, Math.round(mmValue / selectedPanel.height));
+      onVerticalChange(panels);
+    }
+
+    setCalculationsPending(false);
   };
 
   // Calculate actual dimensions based on panel count
   const actualWidth = (horizontalPanels * selectedPanel.width) / 10;
   const actualHeight = (verticalPanels * selectedPanel.height) / 10;
-
-  // Calculate differences
-  const widthDiff = Math.abs(parseFloat(desiredWidth) - actualWidth);
-  const heightDiff = Math.abs(parseFloat(desiredHeight) - actualHeight);
 
   // Calculate total panels
   const totalPanels = horizontalPanels * verticalPanels;
@@ -124,7 +118,7 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
         <div className="space-y-4">
           <h4 className="font-medium text-gray-700 flex items-center gap-2">
             <Info className="w-4 h-4 text-blue-500" />
-            Enter Desired Dimensions (System calculates panels automatically)
+            Enter Desired Dimensions
           </h4>
           <div className="space-y-4 bg-blue-50 p-4 rounded-lg border border-blue-200">
             <div>
@@ -144,12 +138,6 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
                   <span className="text-blue-500 sm:text-sm font-medium">cm</span>
                 </div>
               </div>
-              {widthDiff > 0.1 && (
-                <div className="mt-1 text-sm text-amber-600 flex items-center gap-1">
-                  <Info className="w-4 h-4" />
-                  Actual width will be {actualWidth.toFixed(1)} cm ({horizontalPanels} panels)
-                </div>
-              )}
             </div>
             <div>
               <label htmlFor="screenHeight" className="block text-sm font-medium text-blue-700">
@@ -168,12 +156,21 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
                   <span className="text-blue-500 sm:text-sm font-medium">cm</span>
                 </div>
               </div>
-              {heightDiff > 0.1 && (
-                <div className="mt-1 text-sm text-amber-600 flex items-center gap-1">
-                  <Info className="w-4 h-4" />
-                  Actual height will be {actualHeight.toFixed(1)} cm ({verticalPanels} panels)
-                </div>
-              )}
+            </div>
+            
+            <div className="pt-2">
+              <button
+                onClick={calculatePanelsFromDimensions}
+                disabled={!calculationsPending}
+                className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  calculationsPending
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                <Calculator className="w-4 h-4" />
+                {calculationsPending ? 'Calculate Panels' : 'No Changes to Calculate'}
+              </button>
             </div>
           </div>
         </div>

@@ -1,8 +1,10 @@
 import { useMemo } from 'react';
 import { Panel } from '../types/panel';
+import { Controller } from '../types/controller';
 
 interface CalculatorConfig {
   panel?: Panel;
+  controller?: Controller;
   horizontalPanels: number;
   verticalPanels: number;
 }
@@ -62,7 +64,7 @@ const defaultResult: CalculationResult = {
   flightCases: 0
 };
 
-export function usePanelCalculator({ panel, horizontalPanels, verticalPanels }: CalculatorConfig): CalculationResult {
+export function usePanelCalculator({ panel, controller, horizontalPanels, verticalPanels }: CalculatorConfig): CalculationResult {
   return useMemo(() => {
     if (!panel) {
       return defaultResult;
@@ -105,8 +107,11 @@ export function usePanelCalculator({ panel, horizontalPanels, verticalPanels }: 
 
     // Calculate controller and port requirements
     const pixelsPerPanel = Math.floor((panel.width / panel.pixelPitch) * (panel.height / panel.pixelPitch));
-    const pixelsPerPort = panel.portConfig?.pixelsPerPort || pixelsPerPanel;
-    const maxPorts = panel.portConfig?.maxPorts || 16;
+    
+    // Use controller data if available, otherwise use defaults
+    const pixelsPerPort = controller?.pixelsPerPort || pixelsPerPanel;
+    const maxPorts = controller?.ports || 16;
+    
     const panelsPerPort = Math.floor(pixelsPerPort / pixelsPerPanel);
     const totalPorts = Math.ceil(totalPanels / panelsPerPort);
     const controllersNeeded = Math.ceil(totalPorts / maxPorts);
@@ -143,5 +148,5 @@ export function usePanelCalculator({ panel, horizontalPanels, verticalPanels }: 
       },
       flightCases: Math.ceil(totalPanels / panel.flightCaseCapacity)
     };
-  }, [horizontalPanels, verticalPanels, panel]);
+  }, [horizontalPanels, verticalPanels, panel, controller]);
 }

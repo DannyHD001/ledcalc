@@ -1,0 +1,9 @@
+{
+  "projects": {
+    "default": "ledcalc-78c5c"
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}

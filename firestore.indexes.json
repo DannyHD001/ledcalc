@@ -1,0 +1,35 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "controllers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "manufacturer",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "name",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "panels",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "manufacturer",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "name",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    }
+  ],
+  "fieldOverrides": []
+}

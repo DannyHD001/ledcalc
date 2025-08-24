@@ -1,6 +1,7 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, Image, PDFViewer } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import { Panel } from '../types/panel';
+import { Controller } from '../types/controller';
 import { usePanelCalculator } from '../hooks/usePanelCalculator';
 
 // Create styles
@@ -59,6 +60,7 @@ const styles = StyleSheet.create({
 
 interface PDFExportProps {
   panel: Panel;
+  controller?: Controller | null;
   horizontalPanels: number;
   verticalPanels: number;
   visualizationImage?: string;
@@ -66,11 +68,17 @@ interface PDFExportProps {
 
 const PDFDocument: React.FC<PDFExportProps> = ({
   panel,
+  controller,
   horizontalPanels,
   verticalPanels,
   visualizationImage,
 }) => {
-  const calculations = usePanelCalculator(panel, horizontalPanels, verticalPanels);
+  const calculations = usePanelCalculator({ 
+    panel, 
+    controller: controller || undefined, 
+    horizontalPanels, 
+    verticalPanels 
+  });
 
   return (
     <Document>
@@ -124,7 +132,7 @@ const PDFDocument: React.FC<PDFExportProps> = ({
             </View>
             <View style={styles.gridItem}>
               <Text style={styles.label}>Total Pixels</Text>
-              <Text style={styles.value}>{calculations.totalPixels.toLocaleString()}</Text>
+              <Text style={styles.value}>{calculations.resolution.total.toLocaleString()}</Text>
             </View>
           </View>
         </View>
@@ -173,7 +181,7 @@ const PDFDocument: React.FC<PDFExportProps> = ({
             </View>
             <View style={styles.gridItem}>
               <Text style={styles.label}>Outputs Required</Text>
-              <Text style={styles.value}>{calculations.controllers.outputsNeeded}</Text>
+              <Text style={styles.value}>{calculations.controllers.totalPorts}</Text>
             </View>
           </View>
         </View>

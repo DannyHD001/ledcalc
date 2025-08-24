@@ -8,16 +8,12 @@ interface PanelFormProps {
 }
 
 // Form data type that allows string values for number inputs to preserve typing state
-type FormDataType = Omit<Panel, 'width' | 'height' | 'pixelPitch' | 'weight' | 'power' | 'portConfig' | 'headerConfig' | 'powerConfig'> & {
+type FormDataType = Omit<Panel, 'width' | 'height' | 'pixelPitch' | 'weight' | 'power' | 'headerConfig' | 'powerConfig'> & {
   width: string | number;
   height: string | number;
   pixelPitch: string | number;
   weight: string | number;
   power: string | number;
-  portConfig: {
-    pixelsPerPort: string | number;
-    maxPorts: string | number;
-  };
   powerConfig: {
     maxWattsPerLine: string | number;
   };
@@ -55,10 +51,6 @@ export function PanelForm({ panel, onSubmit, onCancel }: PanelFormProps) {
       },
       attachmentType: panel?.headerConfig?.attachmentType || 'shackle'
     },
-    portConfig: {
-      pixelsPerPort: panel?.portConfig?.pixelsPerPort || 65536,
-      maxPorts: panel?.portConfig?.maxPorts || 16
-    },
     powerConfig: {
       maxWattsPerLine: panel?.powerConfig?.maxWattsPerLine || 3600
     },
@@ -83,10 +75,6 @@ export function PanelForm({ panel, onSubmit, onCancel }: PanelFormProps) {
       pixelPitch: safeParseNumber(formData.pixelPitch),
       weight: safeParseNumber(formData.weight),
       power: safeParseNumber(formData.power),
-      portConfig: {
-        pixelsPerPort: safeParseNumber(formData.portConfig.pixelsPerPort),
-        maxPorts: safeParseNumber(formData.portConfig.maxPorts)
-      },
       powerConfig: {
         maxWattsPerLine: safeParseNumber(formData.powerConfig.maxWattsPerLine)
       },
@@ -118,24 +106,6 @@ export function PanelForm({ panel, onSubmit, onCancel }: PanelFormProps) {
     setFormData(prev => ({
       ...prev,
       [field]: value
-    }));
-  };
-
-  const handlePortConfigChange = (field: keyof FormDataType['portConfig'], value: string | number) => {
-    // For number inputs, preserve the string value during typing
-    if (typeof value === 'string') {
-      // Only allow valid decimal number patterns
-      if (!/^\d*\.?\d*$/.test(value)) {
-        return; // Don't update if invalid pattern
-      }
-    }
-    
-    setFormData(prev => ({
-      ...prev,
-      portConfig: {
-        ...prev.portConfig,
-        [field]: value
-      }
     }));
   };
 
@@ -324,38 +294,6 @@ export function PanelForm({ panel, onSubmit, onCancel }: PanelFormProps) {
                 required
               />
             </label>
-          </div>
-
-          {/* Port Configuration */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-700">Port Configuration</h3>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Pixels per Port
-                  <input
-                    type="text"
-                    value={formData.portConfig.pixelsPerPort}
-                    onChange={(e) => handlePortConfigChange('pixelsPerPort', e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    required
-                  />
-                </label>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Max Ports
-                  <input
-                    type="text"
-                    value={formData.portConfig.maxPorts}
-                    onChange={(e) => handlePortConfigChange('maxPorts', e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    required
-                  />
-                </label>
-              </div>
-            </div>
           </div>
 
           {/* Power Configuration */}
