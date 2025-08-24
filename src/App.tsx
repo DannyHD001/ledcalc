@@ -12,7 +12,7 @@ import { useDatabase } from './hooks/useDatabase';
 import { useControllerDatabase } from './hooks/useControllerDatabase';
 import { DatabaseStatus } from './components/DatabaseStatus';
 import { AdminLogin } from './components/AdminLogin';
-import avteknikLogo from './assets/avteknikk-logo.svg';
+import avteknikLogo from './assets/AVTeknikkLogov2.png';
 
 function App() {
   const [selectedPanel, setSelectedPanel] = useState<Panel | null>(null);

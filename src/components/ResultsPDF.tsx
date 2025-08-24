@@ -10,16 +10,23 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
     marginBottom: 20
   },
   logo: {
-    width: 120,
-    height: 40
+    width: 150,
+    height: 60,
+    marginRight: 20
+  },
+  headerContent: {
+    flex: 1,
+    alignItems: 'center'
   },
   title: {
     fontSize: 24,
-    marginBottom: 20
+    marginBottom: 0,
+    textAlign: 'center'
   },
   section: {
     marginBottom: 15
@@ -66,6 +73,8 @@ interface ResultsPDFProps {
 }
 
 export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPanels, logo, numberingDirection = 'left' }: ResultsPDFProps) {
+  // Debug: Log logo prop
+  console.log('ResultsPDF - Logo prop:', logo);
   // --- Visualization helpers (simplified mirror of on-screen logic) ---
   const getPanelNumber = (row: number, col: number) => {
     switch (numberingDirection) {
@@ -83,7 +92,7 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
   };
 
   const pixelsPerPanel = (panel.width / panel.pixelPitch) * (panel.height / panel.pixelPitch);
-  const pixelsPerPort = panel.portConfig?.pixelsPerPort || 500000;
+  const pixelsPerPort = 500000; // Default fallback value
   const panelsPerLine = Math.max(1, Math.floor(pixelsPerPort / pixelsPerPanel));
   // High-contrast color-blind friendly palette (extended)
   const lineColors = [
@@ -135,7 +144,7 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
     }
   };
   const groups: PanelNode[][] = [];
-  let i = 0; const capacity = panelsPerLine; const maxPorts = panel.portConfig?.maxPorts || 8;
+  let i = 0; const capacity = panelsPerLine; const maxPorts = 8; // Default fallback
   while (i < snake.length && groups.length < maxPorts) {
     const start = i; let lastBoundaryEnd = -1; let count = 0;
     while (i < snake.length && count < capacity) {
@@ -171,8 +180,16 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
       {/* Summary Page (portrait) */}
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
-          {logo && <Image src={logo} style={styles.logo} />}
-          <Text style={styles.title}>LED Screen Configuration</Text>
+          {logo ? (
+            <Image src={logo} style={styles.logo} />
+          ) : (
+            <View style={styles.logo}>
+              <Text style={{ fontSize: 12, textAlign: 'center' }}>AV-teknikk</Text>
+            </View>
+          )}
+          <View style={styles.headerContent}>
+            <Text style={styles.title}>LED Screen Configuration</Text>
+          </View>
         </View>
 
         <View style={styles.section}>

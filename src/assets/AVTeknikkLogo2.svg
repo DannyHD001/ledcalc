@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Logo" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 2084 933.33">
+  <!-- Generator: Adobe Illustrator 29.6.1, SVG Export Plug-In . SVG Version: 2.1.1 Build 9)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: #fc6;
+      }
+
+      .st1 {
+        fill: #304953;
+        font-family: NewtownBoldItalic, Newtown;
+        font-size: 292px;
+        letter-spacing: .06em;
+        stroke: #fc6;
+        stroke-miterlimit: 10;
+        stroke-width: 5.67px;
+      }
+    </style>
+  </defs>
+  <polygon class="st0" points="113.59 845.09 113.59 91.44 1157.58 181.48 1157.58 280.72 1103.59 280.72 1103.59 231.03 167.59 150.3 167.59 786.65 1103.59 712.49 1103.59 669.92 1157.58 669.92 1157.58 762.38 113.59 845.09"/>
+  <text class="st1" transform="translate(221.59 547.21)"><tspan x="0" y="0">AV Teknikk</tspan></text>
+</svg>
