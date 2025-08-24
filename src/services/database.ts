@@ -1,6 +1,7 @@
 import { Panel } from '../types/panel';
 import { Controller } from '../types/controller';
 import { firestoreService } from './firestore';
+import { isFirebaseAvailable } from './firebase';
 
 // Fallback storage service for offline mode
 class LocalStorageService {
@@ -149,7 +150,7 @@ class LocalStorageService {
 // Database service with Firestore primary and localStorage fallback
 class DatabaseService {
   private localStorageService = new LocalStorageService();
-  private useFirestore = true; // Try Firestore first, fallback to localStorage on error
+  private useFirestore = isFirebaseAvailable; // Use Firestore only if Firebase is properly configured
   private firestoreInitialized = false;
 
   private async withFallback<T>(
