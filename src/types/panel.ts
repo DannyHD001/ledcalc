@@ -25,6 +25,5 @@ export interface Panel {
   power: number;
   headerConfig: HeaderConfig;
   powerConfig?: PowerConfig;
-  controllerOutputCapacity: number;
   flightCaseCapacity: number;
 }

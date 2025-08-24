@@ -7,7 +7,7 @@ export class ValidationError extends Error {
 
 export class DuplicateNameError extends ValidationError {
   constructor(itemType: string, name: string) {
-    super(`${itemType} with name "${name}" already exists`);
+    super(`${itemType} with name "${name}" already exists! Please choose a different name.`);
     this.name = 'DuplicateNameError';
   }
 }

@@ -12,6 +12,7 @@ import {
 import { db, isFirebaseAvailable } from './firebase';
 import { Panel } from '../types/panel';
 import { Controller } from '../types/controller';
+import { PanelRequest, ControllerRequest } from '../types/request';
 import { DuplicateNameError } from '../types/errors';
 
 export class FirestoreService {
@@ -219,6 +220,136 @@ export class FirestoreService {
       console.log('✅ Controller deleted from Firestore:', id);
     } catch (error) {
       console.error('Error deleting controller from Firestore:', error);
+      throw error;
+    }
+  }
+
+  // Panel Request Methods
+  async createPanelRequest(panelRequest: Omit<PanelRequest, 'id'>): Promise<PanelRequest> {
+    this.checkAvailability();
+    try {
+      const requestsRef = collection(db!, 'panelRequests');
+      const docRef = await addDoc(requestsRef, {
+        ...panelRequest,
+        requestedAt: new Date(),
+        status: 'pending'
+      });
+      console.log('✅ Panel request created in Firestore with ID:', docRef.id);
+      return {
+        id: docRef.id,
+        ...panelRequest,
+        requestedAt: new Date(),
+        status: 'pending'
+      };
+    } catch (error) {
+      console.error('Error creating panel request in Firestore:', error);
+      throw error;
+    }
+  }
+
+  async getPanelRequests(): Promise<PanelRequest[]> {
+    this.checkAvailability();
+    try {
+      const requestsRef = collection(db!, 'panelRequests');
+      const q = query(requestsRef, orderBy('requestedAt', 'desc'));
+      const querySnapshot = await getDocs(q);
+      const requests = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        requestedAt: doc.data().requestedAt?.toDate() || new Date(),
+        reviewedAt: doc.data().reviewedAt?.toDate()
+      })) as PanelRequest[];
+      console.log('✅ Panel requests fetched from Firestore:', requests.length);
+      return requests;
+    } catch (error) {
+      console.error('Error fetching panel requests from Firestore:', error);
+      throw error;
+    }
+  }
+
+  async updatePanelRequestStatus(
+    id: string, 
+    status: 'approved' | 'rejected', 
+    adminNotes?: string,
+    reviewedBy?: string
+  ): Promise<void> {
+    this.checkAvailability();
+    try {
+      const requestRef = doc(db!, 'panelRequests', id);
+      await updateDoc(requestRef, {
+        status,
+        adminNotes: adminNotes || '',
+        reviewedBy: reviewedBy || '',
+        reviewedAt: new Date()
+      });
+      console.log('✅ Panel request status updated in Firestore:', id, status);
+    } catch (error) {
+      console.error('Error updating panel request status in Firestore:', error);
+      throw error;
+    }
+  }
+
+  // Controller Request Methods
+  async createControllerRequest(controllerRequest: Omit<ControllerRequest, 'id'>): Promise<ControllerRequest> {
+    this.checkAvailability();
+    try {
+      const requestsRef = collection(db!, 'controllerRequests');
+      const docRef = await addDoc(requestsRef, {
+        ...controllerRequest,
+        requestedAt: new Date(),
+        status: 'pending'
+      });
+      console.log('✅ Controller request created in Firestore with ID:', docRef.id);
+      return {
+        id: docRef.id,
+        ...controllerRequest,
+        requestedAt: new Date(),
+        status: 'pending'
+      };
+    } catch (error) {
+      console.error('Error creating controller request in Firestore:', error);
+      throw error;
+    }
+  }
+
+  async getControllerRequests(): Promise<ControllerRequest[]> {
+    this.checkAvailability();
+    try {
+      const requestsRef = collection(db!, 'controllerRequests');
+      const q = query(requestsRef, orderBy('requestedAt', 'desc'));
+      const querySnapshot = await getDocs(q);
+      const requests = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        requestedAt: doc.data().requestedAt?.toDate() || new Date(),
+        reviewedAt: doc.data().reviewedAt?.toDate()
+      })) as ControllerRequest[];
+      console.log('✅ Controller requests fetched from Firestore:', requests.length);
+      return requests;
+    } catch (error) {
+      console.error('Error fetching controller requests from Firestore:', error);
+      throw error;
+    }
+  }
+
+  async updateControllerRequestStatus(
+    id: string, 
+    status: 'approved' | 'rejected', 
+    adminNotes?: string,
+    reviewedBy?: string
+  ): Promise<void> {
+    this.checkAvailability();
+    try {
+      const requestRef = doc(db!, 'controllerRequests', id);
+      await updateDoc(requestRef, {
+        status,
+        adminNotes: adminNotes || '',
+        reviewedBy: reviewedBy || '',
+        reviewedAt: new Date()
+      });
+      console.log('✅ Controller request status updated in Firestore:', id, status);
+    } catch (error) {
+      console.error('Error updating controller request status in Firestore:', error);
       throw error;
     }
   }

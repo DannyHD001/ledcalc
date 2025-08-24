@@ -24,7 +24,6 @@ export const DEFAULT_PANELS: Panel[] = [
     powerConfig: {
       maxWattsPerLine: 3600
     },
-    controllerOutputCapacity: 655360,
     flightCaseCapacity: 8
   },
   {
@@ -50,7 +49,6 @@ export const DEFAULT_PANELS: Panel[] = [
     powerConfig: {
       maxWattsPerLine: 3600
     },
-    controllerOutputCapacity: 655360,
     flightCaseCapacity: 12
   },
   {
@@ -76,7 +74,6 @@ export const DEFAULT_PANELS: Panel[] = [
     powerConfig: {
       maxWattsPerLine: 3600
     },
-    controllerOutputCapacity: 655360,
     flightCaseCapacity: 4
   },
   {
@@ -102,7 +99,6 @@ export const DEFAULT_PANELS: Panel[] = [
     powerConfig: {
       maxWattsPerLine: 3600
     },
-    controllerOutputCapacity: 655360,
     flightCaseCapacity: 10
   }
 ];

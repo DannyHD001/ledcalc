@@ -54,7 +54,6 @@ export function PanelForm({ panel, onSubmit, onCancel }: PanelFormProps) {
     powerConfig: {
       maxWattsPerLine: panelData?.powerConfig?.maxWattsPerLine || 3600
     },
-    controllerOutputCapacity: panelData?.controllerOutputCapacity || 655360,
     flightCaseCapacity: panelData?.flightCaseCapacity || 8
   });
 
@@ -283,19 +282,6 @@ export function PanelForm({ panel, onSubmit, onCancel }: PanelFormProps) {
                   type="text"
                   value={formData.power}
                   onChange={(e) => handleChange('power', e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  required
-                />
-              </label>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Controller Output Capacity
-                <input
-                  type="text"
-                  value={formData.controllerOutputCapacity}
-                  onChange={(e) => handleChange('controllerOutputCapacity', e.target.value)}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   required
                 />

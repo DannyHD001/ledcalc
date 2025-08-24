@@ -12,6 +12,7 @@ import { useDatabase } from './hooks/useDatabase';
 import { useControllerDatabase } from './hooks/useControllerDatabase';
 import { DatabaseStatus } from './components/DatabaseStatus';
 import { AdminLogin } from './components/AdminLogin';
+import UserRequestPanel from './components/UserRequestPanel';
 import avteknikLogo from './assets/AVTeknikkLogov2.png';
 
 function App() {
@@ -44,6 +45,8 @@ function App() {
             <AdminLogin />
           </div>
         </div>
+        
+        <UserRequestPanel />
         
         <Tabs>
           <TabPanel label="Configuration">

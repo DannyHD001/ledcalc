@@ -43,5 +43,7 @@ export function useAuth() {
     signIn,
     signOut,
     isAuthenticated: !!user && isAdmin,
+    isUser: !!user, // Any authenticated user
+    userEmail: user?.email || '',
   };
 }
