@@ -30,10 +30,14 @@ export class FirestoreService {
       const q = query(panelsRef, orderBy('manufacturer'), orderBy('name'));
       const querySnapshot = await getDocs(q);
       
-      return querySnapshot.docs.map(doc => ({
+      const panels = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       } as Panel));
+      
+      console.log('📋 Panels fetched from Firestore:', panels.map(p => ({ name: p.name, id: p.id })));
+      
+      return panels;
     } catch (error) {
       console.error('Error fetching panels from Firestore:', error);
       throw error;

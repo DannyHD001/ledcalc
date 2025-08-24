@@ -13,6 +13,7 @@ import { useControllerDatabase } from './hooks/useControllerDatabase';
 import { DatabaseStatus } from './components/DatabaseStatus';
 import { AdminLogin } from './components/AdminLogin';
 import UserRequestPanel from './components/UserRequestPanel';
+import AdminRequests from './components/AdminRequests';
 import avteknikLogo from './assets/AVTeknikkLogov2.png';
 
 function App() {
@@ -22,7 +23,7 @@ function App() {
   const [verticalPanels, setVerticalPanels] = useState(1);
   const [numberingDirection, setNumberingDirection] = useState<'left' | 'right' | 'top' | 'bottom'>('left');
   const [portStartOverrides, setPortStartOverrides] = useState<{[portNumber: number]: number | undefined}>({});
-  const { panels, loading, error, showErrorModal, clearError, savePanel, removePanel } = useDatabase();
+  const { panels, loading, error, showErrorModal, clearError, savePanel, removePanel, refreshPanels } = useDatabase();
   const { 
     controllers, 
     loading: controllerLoading, 
@@ -30,7 +31,8 @@ function App() {
     showErrorModal: showControllerErrorModal,
     clearError: clearControllerError,
     saveController, 
-    removeController 
+    removeController,
+    refreshControllers
   } = useControllerDatabase();
 
   return (
@@ -51,6 +53,11 @@ function App() {
         <Tabs>
           <TabPanel label="Configuration">
             <div className="space-y-8">
+              <AdminRequests 
+                onPanelApproved={refreshPanels} 
+                onControllerApproved={refreshControllers}
+              />
+              
               <PanelSelector 
                 panels={panels}
                 selectedPanel={selectedPanel}
