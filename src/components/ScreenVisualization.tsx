@@ -10,6 +10,8 @@ interface ScreenVisualizationProps {
   verticalPanels: number;
   numberingDirection: 'left' | 'right' | 'top' | 'bottom';
   onNumberingDirectionChange: (direction: 'left' | 'right' | 'top' | 'bottom') => void;
+  portStartOverrides?: {[portNumber: number]: number | undefined};
+  onPortStartOverridesChange?: (overrides: {[portNumber: number]: number | undefined}) => void;
 }
 
 export function ScreenVisualization({ 
@@ -18,12 +20,13 @@ export function ScreenVisualization({
   horizontalPanels = 0,
   verticalPanels = 0,
   numberingDirection,
-  onNumberingDirectionChange
+  onNumberingDirectionChange,
+  portStartOverrides = {},
+  onPortStartOverridesChange
 }: ScreenVisualizationProps) {
   const [showProcessorLines, setShowProcessorLines] = useState(true);
   const [zoom, setZoom] = useState(1);
   const [showPortOverrides, setShowPortOverrides] = useState(false);
-  const [portStartOverrides, setPortStartOverrides] = useState<{[portNumber: number]: number | undefined}>({});
   const containerRef = useRef<HTMLDivElement>(null);
   
   // Get processor configuration - using controller data if available, otherwise defaults
@@ -549,10 +552,12 @@ export function ScreenVisualization({
                       value={portStartOverrides[portNumber] || ''}
                       onChange={(e) => {
                         const value = e.target.value ? parseInt(e.target.value) : undefined;
-                        setPortStartOverrides(prev => ({
-                          ...prev,
-                          [portNumber]: value
-                        }));
+                        if (onPortStartOverridesChange) {
+                          onPortStartOverridesChange({
+                            ...portStartOverrides,
+                            [portNumber]: value
+                          });
+                        }
                       }}
                       placeholder="Auto"
                       className="w-full px-2 py-1 text-xs border border-yellow-300 rounded-md focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500"

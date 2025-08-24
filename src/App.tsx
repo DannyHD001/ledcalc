@@ -20,6 +20,7 @@ function App() {
   const [horizontalPanels, setHorizontalPanels] = useState(1);
   const [verticalPanels, setVerticalPanels] = useState(1);
   const [numberingDirection, setNumberingDirection] = useState<'left' | 'right' | 'top' | 'bottom'>('left');
+  const [portStartOverrides, setPortStartOverrides] = useState<{[portNumber: number]: number | undefined}>({});
   const { panels, loading, error, savePanel, removePanel } = useDatabase();
   const { 
     controllers, 
@@ -141,6 +142,8 @@ function App() {
                 verticalPanels={verticalPanels}
                 numberingDirection={numberingDirection}
                 onNumberingDirectionChange={setNumberingDirection}
+                portStartOverrides={portStartOverrides}
+                onPortStartOverridesChange={setPortStartOverrides}
               />
             ) : (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
@@ -170,6 +173,8 @@ function App() {
                 logo={avteknikLogo}
                 numberingDirection={numberingDirection}
                 onNumberingDirectionChange={setNumberingDirection}
+                portStartOverrides={portStartOverrides}
+                onPortStartOverridesChange={setPortStartOverrides}
               />
             ) : (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">

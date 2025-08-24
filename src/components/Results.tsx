@@ -14,9 +14,21 @@ interface ResultsProps {
   logo?: string;
   numberingDirection: 'left' | 'right' | 'top' | 'bottom';
   onNumberingDirectionChange: (direction: 'left' | 'right' | 'top' | 'bottom') => void;
+  portStartOverrides?: {[portNumber: number]: number | undefined};
+  onPortStartOverridesChange?: (overrides: {[portNumber: number]: number | undefined}) => void;
 }
 
-export function Results({ panel, controller, horizontalPanels, verticalPanels, logo, numberingDirection, onNumberingDirectionChange }: ResultsProps) {
+export function Results({ 
+  panel, 
+  controller, 
+  horizontalPanels, 
+  verticalPanels, 
+  logo, 
+  numberingDirection, 
+  onNumberingDirectionChange,
+  portStartOverrides = {},
+  onPortStartOverridesChange
+}: ResultsProps) {
   if (!panel) {
     return (
       <div className="p-6">
@@ -188,6 +200,8 @@ export function Results({ panel, controller, horizontalPanels, verticalPanels, l
           verticalPanels={verticalPanels}
           numberingDirection={numberingDirection}
           onNumberingDirectionChange={onNumberingDirectionChange}
+          portStartOverrides={portStartOverrides}
+          onPortStartOverridesChange={onPortStartOverridesChange}
         />
       </div>
     </div>
