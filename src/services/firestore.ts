@@ -71,6 +71,22 @@ export class FirestoreService {
     }
   }
 
+  async createPanel(panel: Omit<Panel, 'id'>): Promise<Panel> {
+    this.checkAvailability();
+    try {
+      const panelsRef = collection(db!, 'panels');
+      const docRef = await addDoc(panelsRef, panel);
+      console.log('✅ Panel created in Firestore with ID:', docRef.id);
+      return {
+        id: docRef.id,
+        ...panel
+      };
+    } catch (error) {
+      console.error('Error creating panel in Firestore:', error);
+      throw error;
+    }
+  }
+
   async updatePanel(id: string, panel: Partial<Panel>): Promise<void> {
     this.checkAvailability();
     try {
@@ -142,6 +158,22 @@ export class FirestoreService {
       return docRef.id;
     } catch (error) {
       console.error('Error saving controller to Firestore:', error);
+      throw error;
+    }
+  }
+
+  async createController(controller: Omit<Controller, 'id'>): Promise<Controller> {
+    this.checkAvailability();
+    try {
+      const controllersRef = collection(db!, 'controllers');
+      const docRef = await addDoc(controllersRef, controller);
+      console.log('✅ Controller created in Firestore with ID:', docRef.id);
+      return {
+        id: docRef.id,
+        ...controller
+      };
+    } catch (error) {
+      console.error('Error creating controller in Firestore:', error);
       throw error;
     }
   }
