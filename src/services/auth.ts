@@ -4,7 +4,7 @@ import {
   onAuthStateChanged,
   User
 } from 'firebase/auth';
-import { auth } from './firebase';
+import { auth, isFirebaseAvailable } from './firebase';
 
 class AuthService {
   private adminEmails = [
@@ -13,10 +13,19 @@ class AuthService {
     // Add more admin emails as needed
   ];
 
+  // Check if Firebase Auth is available
+  private isAuthAvailable(): boolean {
+    return isFirebaseAvailable && auth !== null;
+  }
+
   // Sign in with email and password
   async signIn(email: string, password: string): Promise<{ success: boolean; error?: string; isAdmin?: boolean }> {
+    if (!this.isAuthAvailable()) {
+      return { success: false, error: 'Authentication not available. Running in offline mode.' };
+    }
+
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth!, email, password);
       const isAdmin = this.isAdminUser(userCredential.user);
       
       if (!isAdmin) {
@@ -51,8 +60,13 @@ class AuthService {
 
   // Sign out
   async signOut(): Promise<void> {
+    if (!this.isAuthAvailable()) {
+      console.log('⚠️ Sign out attempted but auth not available');
+      return;
+    }
+
     try {
-      await signOut(auth);
+      await signOut(auth!);
       console.log('✅ Admin logged out successfully');
     } catch (error) {
       console.error('❌ Sign out failed:', error);
@@ -68,7 +82,10 @@ class AuthService {
 
   // Get current user
   getCurrentUser(): User | null {
-    return auth.currentUser;
+    if (!this.isAuthAvailable()) {
+      return null;
+    }
+    return auth!.currentUser;
   }
 
   // Check if current user is admin
@@ -78,7 +95,14 @@ class AuthService {
 
   // Listen to auth state changes
   onAuthStateChanged(callback: (user: User | null, isAdmin: boolean) => void): () => void {
-    return onAuthStateChanged(auth, (user) => {
+    if (!this.isAuthAvailable()) {
+      // If auth is not available, immediately call callback with null user
+      callback(null, false);
+      // Return a no-op unsubscribe function
+      return () => {};
+    }
+
+    return onAuthStateChanged(auth!, (user) => {
       const isAdmin = this.isAdminUser(user);
       callback(user, isAdmin);
     });
