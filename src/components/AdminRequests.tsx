@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Check, X, Clock, User, Calendar } from 'lucide-react';
 import { PanelRequest, ControllerRequest } from '../types/request';
 import { firestoreService } from '../services/firestore';
+import { databaseService } from '../services/database';
 import { useAuth } from '../hooks/useAuth';
 
 interface AdminRequestsProps {
@@ -46,11 +47,21 @@ const AdminRequests: React.FC<AdminRequestsProps> = ({
   const handleApprovePanelRequest = async (request: PanelRequest) => {
     setProcessingId(request.id);
     try {
-      // Create the panel in the main collection (without ID, Firestore will generate it)
+      // Check if panel already exists
+      const existingPanels = await databaseService.getPanels();
+      const duplicatePanel = existingPanels.find(panel => 
+        panel.name.toLowerCase() === request.requestedPanel.name.toLowerCase() &&
+        panel.manufacturer.toLowerCase() === request.requestedPanel.manufacturer.toLowerCase()
+      );
+
+      if (duplicatePanel) {
+        alert(`Panel "${request.requestedPanel.name}" by ${request.requestedPanel.manufacturer} already exists in the database.`);
+        return;
+      }
+
+      // Create the panel in the main collection
       const newPanel = request.requestedPanel;
-      
-      // Add to panels collection
-      await firestoreService.createPanel(newPanel);
+      await databaseService.createPanel(newPanel);
       
       // Update request status
       await firestoreService.updatePanelRequestStatus(
@@ -65,6 +76,9 @@ const AdminRequests: React.FC<AdminRequestsProps> = ({
       onPanelApproved();
     } catch (error) {
       console.error('Error approving panel request:', error);
+      if (error instanceof Error) {
+        alert(`Error approving panel: ${error.message}`);
+      }
     } finally {
       setProcessingId(null);
     }
@@ -90,11 +104,21 @@ const AdminRequests: React.FC<AdminRequestsProps> = ({
   const handleApproveControllerRequest = async (request: ControllerRequest) => {
     setProcessingId(request.id);
     try {
-      // Create the controller in the main collection (without ID, Firestore will generate it)
+      // Check if controller already exists
+      const existingControllers = await databaseService.getControllers();
+      const duplicateController = existingControllers.find(controller => 
+        controller.name.toLowerCase() === request.requestedController.name.toLowerCase() &&
+        controller.manufacturer.toLowerCase() === request.requestedController.manufacturer.toLowerCase()
+      );
+
+      if (duplicateController) {
+        alert(`Controller "${request.requestedController.name}" by ${request.requestedController.manufacturer} already exists in the database.`);
+        return;
+      }
+
+      // Create the controller in the main collection
       const newController = request.requestedController;
-      
-      // Add to controllers collection
-      await firestoreService.createController(newController);
+      await databaseService.createController(newController);
       
       // Update request status
       await firestoreService.updateControllerRequestStatus(
@@ -109,6 +133,9 @@ const AdminRequests: React.FC<AdminRequestsProps> = ({
       onControllerApproved();
     } catch (error) {
       console.error('Error approving controller request:', error);
+      if (error instanceof Error) {
+        alert(`Error approving controller: ${error.message}`);
+      }
     } finally {
       setProcessingId(null);
     }

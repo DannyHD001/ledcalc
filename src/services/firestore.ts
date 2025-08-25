@@ -107,10 +107,15 @@ export class FirestoreService {
     this.checkAvailability();
     try {
       const panelRef = doc(db!, 'panels', id);
+      
+      // For updates, the document should exist - just update it
       await updateDoc(panelRef, panel);
       console.log('✅ Panel updated in Firestore:', id);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating panel in Firestore:', error);
+      if (error.code === 'not-found') {
+        throw new Error(`Panel with ID ${id} not found for update`);
+      }
       throw error;
     }
   }
@@ -125,6 +130,17 @@ export class FirestoreService {
       console.error('Error deleting panel from Firestore:', error);
       throw error;
     }
+  }
+
+  async searchPanels(searchTerm: string): Promise<Panel[]> {
+    const panels = await this.getPanels();
+    if (!searchTerm.trim()) return panels;
+    
+    const term = searchTerm.toLowerCase();
+    return panels.filter(panel => 
+      panel.name.toLowerCase().includes(term) ||
+      panel.manufacturer.toLowerCase().includes(term)
+    );
   }
 
   // Controller operations
@@ -208,10 +224,15 @@ export class FirestoreService {
     this.checkAvailability();
     try {
       const controllerRef = doc(db!, 'controllers', id);
+      
+      // For updates, the document should exist - just update it
       await updateDoc(controllerRef, controller);
       console.log('✅ Controller updated in Firestore:', id);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating controller in Firestore:', error);
+      if (error.code === 'not-found') {
+        throw new Error(`Controller with ID ${id} not found for update`);
+      }
       throw error;
     }
   }
@@ -226,6 +247,18 @@ export class FirestoreService {
       console.error('Error deleting controller from Firestore:', error);
       throw error;
     }
+  }
+
+  async searchControllers(searchTerm: string): Promise<Controller[]> {
+    const controllers = await this.getControllers();
+    if (!searchTerm.trim()) return controllers;
+    
+    const term = searchTerm.toLowerCase();
+    return controllers.filter(controller => 
+      controller.name.toLowerCase().includes(term) ||
+      controller.manufacturer.toLowerCase().includes(term) ||
+      (controller.outputType && controller.outputType.toLowerCase().includes(term))
+    );
   }
 
   // Panel Request Methods
