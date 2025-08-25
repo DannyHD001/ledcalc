@@ -22,6 +22,138 @@ export class FirestoreService {
     }
   }
 
+  // Utility function to fix ID field mismatches
+  async fixIdMismatches(): Promise<{ panelsFixed: number; controllersFixed: number }> {
+    this.checkAvailability();
+    try {
+      let panelsFixed = 0;
+      let controllersFixed = 0;
+
+      // Fix panels
+      const panelsRef = collection(db!, 'panels');
+      const panelsSnapshot = await getDocs(panelsRef);
+      
+      for (const docSnapshot of panelsSnapshot.docs) {
+        const panelData = docSnapshot.data();
+        if (panelData.id && panelData.id !== docSnapshot.id) {
+          console.log(`Fixing ID mismatch for panel: ${panelData.name} (document: ${docSnapshot.id}, data: ${panelData.id})`);
+          const { id: _, ...cleanData } = panelData;
+          const docRef = doc(db!, 'panels', docSnapshot.id);
+          await updateDoc(docRef, cleanData);
+          panelsFixed++;
+        }
+      }
+
+      // Fix controllers
+      const controllersRef = collection(db!, 'controllers');
+      const controllersSnapshot = await getDocs(controllersRef);
+      
+      for (const docSnapshot of controllersSnapshot.docs) {
+        const controllerData = docSnapshot.data();
+        if (controllerData.id && controllerData.id !== docSnapshot.id) {
+          console.log(`Fixing ID mismatch for controller: ${controllerData.name} (document: ${docSnapshot.id}, data: ${controllerData.id})`);
+          const { id: _, ...cleanData } = controllerData;
+          const docRef = doc(db!, 'controllers', docSnapshot.id);
+          await updateDoc(docRef, cleanData);
+          controllersFixed++;
+        }
+      }
+
+      console.log(`✅ ID fix completed: ${panelsFixed} panels and ${controllersFixed} controllers fixed`);
+      return { panelsFixed, controllersFixed };
+    } catch (error) {
+      console.error('Error during ID fix:', error);
+      throw error;
+    }
+  }
+
+  // Utility function to clean up duplicate documents and ensure ID consistency
+  async cleanupDuplicates(): Promise<{ panelsDeleted: number; controllersDeleted: number }> {
+    this.checkAvailability();
+    try {
+      let panelsDeleted = 0;
+      let controllersDeleted = 0;
+
+      // Clean up panels
+      const panelsRef = collection(db!, 'panels');
+      const panelsSnapshot = await getDocs(panelsRef);
+      const panelsByName = new Map<string, any[]>();
+
+      // Group panels by name+manufacturer combination and clean up id fields
+      for (const docSnapshot of panelsSnapshot.docs) {
+        const panelData = docSnapshot.data();
+        const key = `${panelData.name}-${panelData.manufacturer}`.toLowerCase();
+        
+        // Remove id field from document data if it exists and doesn't match document ID
+        if (panelData.id && panelData.id !== docSnapshot.id) {
+          console.log(`Removing mismatched id field from panel: ${panelData.name}`);
+          const { id: _, ...cleanData } = panelData;
+          const docRef = doc(db!, 'panels', docSnapshot.id);
+          await updateDoc(docRef, cleanData);
+        }
+        
+        if (!panelsByName.has(key)) {
+          panelsByName.set(key, []);
+        }
+        panelsByName.get(key)!.push({ id: docSnapshot.id, data: panelData });
+      }
+
+      // Remove duplicates (keep the first one, delete the rest)
+      for (const [key, panels] of panelsByName) {
+        if (panels.length > 1) {
+          console.log(`Found ${panels.length} duplicate panels for: ${key}`);
+          // Keep the first one, delete the rest
+          for (let i = 1; i < panels.length; i++) {
+            await deleteDoc(doc(db!, 'panels', panels[i].id));
+            panelsDeleted++;
+          }
+        }
+      }
+
+      // Clean up controllers
+      const controllersRef = collection(db!, 'controllers');
+      const controllersSnapshot = await getDocs(controllersRef);
+      const controllersByName = new Map<string, any[]>();
+
+      // Group controllers by name+manufacturer combination and clean up id fields
+      for (const docSnapshot of controllersSnapshot.docs) {
+        const controllerData = docSnapshot.data();
+        const key = `${controllerData.name}-${controllerData.manufacturer}`.toLowerCase();
+        
+        // Remove id field from document data if it exists and doesn't match document ID
+        if (controllerData.id && controllerData.id !== docSnapshot.id) {
+          console.log(`Removing mismatched id field from controller: ${controllerData.name}`);
+          const { id: _, ...cleanData } = controllerData;
+          const docRef = doc(db!, 'controllers', docSnapshot.id);
+          await updateDoc(docRef, cleanData);
+        }
+        
+        if (!controllersByName.has(key)) {
+          controllersByName.set(key, []);
+        }
+        controllersByName.get(key)!.push({ id: docSnapshot.id, data: controllerData });
+      }
+
+      // Remove duplicates
+      for (const [key, controllers] of controllersByName) {
+        if (controllers.length > 1) {
+          console.log(`Found ${controllers.length} duplicate controllers for: ${key}`);
+          // Keep the first one, delete the rest
+          for (let i = 1; i < controllers.length; i++) {
+            await deleteDoc(doc(db!, 'controllers', controllers[i].id));
+            controllersDeleted++;
+          }
+        }
+      }
+
+      console.log(`✅ Cleanup completed: ${panelsDeleted} duplicate panels and ${controllersDeleted} duplicate controllers removed`);
+      return { panelsDeleted, controllersDeleted };
+    } catch (error) {
+      console.error('Error during cleanup:', error);
+      throw error;
+    }
+  }
+
   // Panel operations
   async getPanels(): Promise<Panel[]> {
     this.checkAvailability();
@@ -108,8 +240,11 @@ export class FirestoreService {
     try {
       const panelRef = doc(db!, 'panels', id);
       
+      // Remove the id field from the data - document ID is the source of truth
+      const { id: _, ...panelData } = panel;
+      
       // For updates, the document should exist - just update it
-      await updateDoc(panelRef, panel);
+      await updateDoc(panelRef, panelData);
       console.log('✅ Panel updated in Firestore:', id);
     } catch (error: any) {
       console.error('Error updating panel in Firestore:', error);
@@ -225,8 +360,11 @@ export class FirestoreService {
     try {
       const controllerRef = doc(db!, 'controllers', id);
       
+      // Remove the id field from the data - document ID is the source of truth
+      const { id: _, ...controllerData } = controller;
+      
       // For updates, the document should exist - just update it
-      await updateDoc(controllerRef, controller);
+      await updateDoc(controllerRef, controllerData);
       console.log('✅ Controller updated in Firestore:', id);
     } catch (error: any) {
       console.error('Error updating controller in Firestore:', error);

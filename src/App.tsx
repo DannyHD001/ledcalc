@@ -14,6 +14,7 @@ import { DatabaseStatus } from './components/DatabaseStatus';
 import { AdminLogin } from './components/AdminLogin';
 import UserRequestPanel from './components/UserRequestPanel';
 import AdminRequests from './components/AdminRequests';
+import DatabaseCleanup from './components/DatabaseCleanup';
 import avteknikLogo from './assets/AVTeknikkLogov2.png';
 
 function App() {
@@ -57,6 +58,8 @@ function App() {
                 onPanelApproved={refreshPanels} 
                 onControllerApproved={refreshControllers}
               />
+              
+              <DatabaseCleanup />
               
               <PanelSelector 
                 panels={panels}

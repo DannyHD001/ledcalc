@@ -42,9 +42,13 @@ export function useDatabase() {
       const existingPanel = panels.find(p => p.id === panel.id);
       
       if (existingPanel) {
-        await databaseService.updatePanel(panel.id, panel);
+        // For updates, remove the id field from the data before sending to Firestore
+        const { id: _, ...panelData } = panel;
+        await databaseService.updatePanel(panel.id, panelData);
       } else {
-        await databaseService.createPanel(panel);
+        // For creates, remove the id field from the data before sending to Firestore
+        const { id: _, ...panelData } = panel;
+        await databaseService.createPanel(panelData);
       }
       
       await loadPanels();

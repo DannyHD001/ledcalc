@@ -36,9 +36,13 @@ export function useControllerDatabase() {
       const existingController = controllers.find(c => c.id === controller.id);
       
       if (existingController) {
-        await databaseService.updateController(controller.id, controller);
+        // For updates, remove the id field from the data before sending to Firestore
+        const { id: _, ...controllerData } = controller;
+        await databaseService.updateController(controller.id, controllerData);
       } else {
-        await databaseService.createController(controller);
+        // For creates, remove the id field from the data before sending to Firestore
+        const { id: _, ...controllerData } = controller;
+        await databaseService.createController(controllerData);
       }
       
       await loadControllers();
