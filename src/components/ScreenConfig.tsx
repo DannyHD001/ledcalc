@@ -2,6 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { Panel } from '../types/panel';
 import { Info, Calculator } from 'lucide-react';
 
+const ASPECT_RATIOS = [
+  { label: 'Free (no ratio)', value: '' },
+  { label: '16:9 — Landscape HD', value: '16:9' },
+  { label: '16:10 — Landscape WUXGA', value: '16:10' },
+  { label: '9:16 — Portrait', value: '9:16' },
+  { label: '4:3 — Standard', value: '4:3' },
+  { label: '1:1 — Square', value: '1:1' },
+];
+
+function parseRatio(value: string): { w: number; h: number } | null {
+  if (!value) return null;
+  const [w, h] = value.split(':').map(Number);
+  return { w, h };
+}
+
 interface ScreenConfigProps {
   horizontalPanels: number;
   verticalPanels: number;
@@ -17,21 +32,15 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
   onHorizontalChange,
   onVerticalChange
 }) => {
-  if (!selectedPanel) return null;
-
-  // State for free-form dimension inputs
-  const [desiredWidth, setDesiredWidth] = useState<string>(((horizontalPanels * selectedPanel.width) / 10).toString());
-  const [desiredHeight, setDesiredHeight] = useState<string>(((verticalPanels * selectedPanel.height) / 10).toString());
-  
-  // State for panel count inputs to allow string-based editing
+  const [desiredWidth, setDesiredWidth] = useState<string>('');
+  const [desiredHeight, setDesiredHeight] = useState<string>('');
   const [horizontalPanelInput, setHorizontalPanelInput] = useState<string>(horizontalPanels.toString());
   const [verticalPanelInput, setVerticalPanelInput] = useState<string>(verticalPanels.toString());
-  
-  // Track if calculations are pending
   const [calculationsPending, setCalculationsPending] = useState<boolean>(false);
+  const [aspectRatioValue, setAspectRatioValue] = useState<string>('');
 
-  // Update dimension inputs when panel counts change
   useEffect(() => {
+    if (!selectedPanel) return;
     setDesiredWidth(((horizontalPanels * selectedPanel.width) / 10).toString());
     setDesiredHeight(((verticalPanels * selectedPanel.height) / 10).toString());
     setHorizontalPanelInput(horizontalPanels.toString());
@@ -39,76 +48,78 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
     setCalculationsPending(false);
   }, [horizontalPanels, verticalPanels, selectedPanel]);
 
+  if (!selectedPanel) return null;
+
+  const ratio = parseRatio(aspectRatioValue);
+
   const handlePanelCountChange = (value: string, type: 'horizontal' | 'vertical') => {
-    // Only allow valid integer patterns, but also allow empty string
-    if (value !== '' && !/^\d+$/.test(value)) {
-      return; // Don't update if invalid pattern
-    }
-
-    // Update the display value immediately
-    if (type === 'horizontal') {
-      setHorizontalPanelInput(value);
-    } else {
-      setVerticalPanelInput(value);
-    }
-
-    // Only update the actual value if we have a valid number
+    if (value !== '' && !/^\d+$/.test(value)) return;
+    if (type === 'horizontal') setHorizontalPanelInput(value);
+    else setVerticalPanelInput(value);
     if (value !== '' && !isNaN(parseInt(value))) {
       const numValue = Math.max(1, parseInt(value));
-      if (type === 'horizontal') {
-        onHorizontalChange(numValue);
-      } else {
-        onVerticalChange(numValue);
-      }
+      if (type === 'horizontal') onHorizontalChange(numValue);
+      else onVerticalChange(numValue);
     }
   };
 
-  const handleDimensionChange = (
-    value: string,
-    dimension: 'width' | 'height'
-  ) => {
-    // Allow empty string and any valid decimal number (including large numbers like 800)
-    if (value !== '' && !/^\d*\.?\d*$/.test(value)) {
-      return; // Don't update if invalid pattern
-    }
-
-    // Update the display value immediately
-    if (dimension === 'width') {
-      setDesiredWidth(value);
-    } else {
-      setDesiredHeight(value);
-    }
-
-    // Mark that calculations are pending
+  const handleWidthChange = (value: string) => {
+    if (value !== '' && !/^\d*\.?\d*$/.test(value)) return;
+    setDesiredWidth(value);
     setCalculationsPending(true);
+    // Auto-derive height from ratio
+    if (ratio && value !== '' && !isNaN(parseFloat(value))) {
+      const wMm = parseFloat(value) * 10;
+      const hPanels = Math.max(1, Math.round((wMm / selectedPanel.width) * (ratio.h / ratio.w)));
+      setDesiredHeight(((hPanels * selectedPanel.height) / 10).toFixed(2));
+    }
+  };
+
+  const handleHeightChange = (value: string) => {
+    if (value !== '' && !/^\d*\.?\d*$/.test(value)) return;
+    setDesiredHeight(value);
+    setCalculationsPending(true);
+    // Auto-derive width from ratio
+    if (ratio && value !== '' && !isNaN(parseFloat(value))) {
+      const hMm = parseFloat(value) * 10;
+      const wPanels = Math.max(1, Math.round((hMm / selectedPanel.height) * (ratio.w / ratio.h)));
+      setDesiredWidth(((wPanels * selectedPanel.width) / 10).toFixed(2));
+    }
+  };
+
+  const handleAspectRatioChange = (value: string) => {
+    setAspectRatioValue(value);
+    const r = parseRatio(value);
+    if (!r) return;
+    // Snap current width to closest panel grid, then calculate height from ratio
+    if (desiredWidth !== '' && !isNaN(parseFloat(desiredWidth))) {
+      const wMm = parseFloat(desiredWidth) * 10;
+      const wPanels = Math.max(1, Math.round(wMm / selectedPanel.width));
+      const hPanels = Math.max(1, Math.round(wPanels * (r.h / r.w)));
+      setDesiredWidth(((wPanels * selectedPanel.width) / 10).toFixed(2));
+      setDesiredHeight(((hPanels * selectedPanel.height) / 10).toFixed(2));
+      setCalculationsPending(true);
+    }
   };
 
   const calculatePanelsFromDimensions = () => {
-    // Calculate horizontal panels from width
     if (desiredWidth !== '' && !isNaN(parseFloat(desiredWidth))) {
-      const numValue = parseFloat(desiredWidth);
-      const mmValue = numValue * 10; // Convert cm to mm
-      const panels = Math.max(1, Math.round(mmValue / selectedPanel.width));
-      onHorizontalChange(panels);
+      onHorizontalChange(Math.max(1, Math.round((parseFloat(desiredWidth) * 10) / selectedPanel.width)));
     }
-
-    // Calculate vertical panels from height
     if (desiredHeight !== '' && !isNaN(parseFloat(desiredHeight))) {
-      const numValue = parseFloat(desiredHeight);
-      const mmValue = numValue * 10; // Convert cm to mm
-      const panels = Math.max(1, Math.round(mmValue / selectedPanel.height));
-      onVerticalChange(panels);
+      onVerticalChange(Math.max(1, Math.round((parseFloat(desiredHeight) * 10) / selectedPanel.height)));
     }
-
     setCalculationsPending(false);
   };
 
-  // Calculate actual dimensions based on panel count
   const actualWidth = (horizontalPanels * selectedPanel.width) / 10;
   const actualHeight = (verticalPanels * selectedPanel.height) / 10;
-
-  // Calculate total panels
   const totalPanels = horizontalPanels * verticalPanels;
+
+  // Compute actual ratio for display
+  const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
+  const g = gcd(horizontalPanels, verticalPanels);
+  const actualRatioStr = `${horizontalPanels / g}:${verticalPanels / g}`;
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm space-y-6">
@@ -121,6 +132,29 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
             Enter Desired Dimensions
           </h4>
           <div className="space-y-4 bg-blue-50 p-4 rounded-lg border border-blue-200">
+
+            {/* Aspect Ratio Dropdown */}
+            <div>
+              <label htmlFor="aspectRatio" className="block text-sm font-medium text-blue-700">
+                Aspect Ratio (optional)
+              </label>
+              <select
+                id="aspectRatio"
+                value={aspectRatioValue}
+                onChange={(e) => handleAspectRatioChange(e.target.value)}
+                className="mt-1 block w-full rounded-md border-blue-300 bg-white pl-3 pr-8 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+              >
+                {ASPECT_RATIOS.map(r => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
+              {ratio && (
+                <p className="mt-1 text-xs text-blue-500">
+                  Editing width or height will auto-calculate the other dimension to match {aspectRatioValue}.
+                </p>
+              )}
+            </div>
+
             <div>
               <label htmlFor="screenWidth" className="block text-sm font-medium text-blue-700">
                 Desired Width (cm)
@@ -130,7 +164,7 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
                   type="text"
                   id="screenWidth"
                   value={desiredWidth}
-                  onChange={(e) => handleDimensionChange(e.target.value, 'width')}
+                  onChange={(e) => handleWidthChange(e.target.value)}
                   className="block w-full rounded-md border-blue-300 pl-3 pr-12 focus:ring-blue-500 focus:border-blue-500 bg-white"
                   placeholder="Enter desired width (e.g., 400)"
                 />
@@ -148,7 +182,7 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
                   type="text"
                   id="screenHeight"
                   value={desiredHeight}
-                  onChange={(e) => handleDimensionChange(e.target.value, 'height')}
+                  onChange={(e) => handleHeightChange(e.target.value)}
                   className="block w-full rounded-md border-blue-300 pl-3 pr-12 focus:ring-blue-500 focus:border-blue-500 bg-white"
                   placeholder="Enter desired height (e.g., 300)"
                 />
@@ -192,6 +226,11 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
                 <div className="text-lg font-semibold text-gray-800">{verticalPanels}</div>
                 <div className="text-gray-600">Vertical</div>
               </div>
+            </div>
+
+            <div className="text-center pt-2 border-t border-gray-200">
+              <div className="text-sm text-gray-500">Panel Grid Ratio</div>
+              <div className="text-base font-semibold text-gray-700">{actualRatioStr}</div>
             </div>
           </div>
           
