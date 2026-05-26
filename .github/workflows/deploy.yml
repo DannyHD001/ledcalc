@@ -39,11 +39,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
-          git fetch origin gh-pages:gh-pages 2>/dev/null || true
-          git checkout gh-pages 2>/dev/null || (git checkout --orphan gh-pages && git reset --hard)
-          find . -maxdepth 1 ! -name "." ! -name ".." ! -name ".git" ! -name "dist" -exec rm -rf {} +
-          cp -r dist/. .
-          rm -rf dist
+          git fetch origin
+          git worktree add /tmp/gh-pages-deploy origin/gh-pages
+          rm -rf /tmp/gh-pages-deploy/*
+          cp -r dist/. /tmp/gh-pages-deploy/
+          cd /tmp/gh-pages-deploy
           git add -A
           git diff --staged --quiet || git commit -m "Deploy: ${{ github.sha }}"
-          git push origin gh-pages --force
+          git push origin HEAD:gh-pages
