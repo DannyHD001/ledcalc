@@ -67,11 +67,10 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
     if (value !== '' && !/^\d*\.?\d*$/.test(value)) return;
     setDesiredWidth(value);
     setCalculationsPending(true);
-    // Auto-derive height from ratio
+    // Derive height directly from width using the ratio (pure cm math, no panel snapping)
     if (ratio && value !== '' && !isNaN(parseFloat(value))) {
-      const wMm = parseFloat(value) * 10;
-      const hPanels = Math.max(1, Math.round((wMm / selectedPanel.width) * (ratio.h / ratio.w)));
-      setDesiredHeight(((hPanels * selectedPanel.height) / 10).toFixed(2));
+      const wCm = parseFloat(value);
+      setDesiredHeight((wCm * (ratio.h / ratio.w)).toFixed(2));
     }
   };
 
@@ -79,11 +78,10 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
     if (value !== '' && !/^\d*\.?\d*$/.test(value)) return;
     setDesiredHeight(value);
     setCalculationsPending(true);
-    // Auto-derive width from ratio
+    // Derive width directly from height using the ratio (pure cm math, no panel snapping)
     if (ratio && value !== '' && !isNaN(parseFloat(value))) {
-      const hMm = parseFloat(value) * 10;
-      const wPanels = Math.max(1, Math.round((hMm / selectedPanel.height) * (ratio.w / ratio.h)));
-      setDesiredWidth(((wPanels * selectedPanel.width) / 10).toFixed(2));
+      const hCm = parseFloat(value);
+      setDesiredWidth((hCm * (ratio.w / ratio.h)).toFixed(2));
     }
   };
 
@@ -91,13 +89,10 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
     setAspectRatioValue(value);
     const r = parseRatio(value);
     if (!r) return;
-    // Snap current width to closest panel grid, then calculate height from ratio
+    // Derive height directly from current width using the ratio
     if (desiredWidth !== '' && !isNaN(parseFloat(desiredWidth))) {
-      const wMm = parseFloat(desiredWidth) * 10;
-      const wPanels = Math.max(1, Math.round(wMm / selectedPanel.width));
-      const hPanels = Math.max(1, Math.round(wPanels * (r.h / r.w)));
-      setDesiredWidth(((wPanels * selectedPanel.width) / 10).toFixed(2));
-      setDesiredHeight(((hPanels * selectedPanel.height) / 10).toFixed(2));
+      const wCm = parseFloat(desiredWidth);
+      setDesiredHeight((wCm * (r.h / r.w)).toFixed(2));
       setCalculationsPending(true);
     }
   };
