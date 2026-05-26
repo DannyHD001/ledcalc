@@ -1,10 +1,11 @@
 import { Panel } from '../types/panel';
 import { Controller } from '../types/controller';
-import { Download, Monitor, Weight, Cpu, Box, Network, Grid } from 'lucide-react';
+import { Download, Monitor, Weight, Cpu, Box, Network, Grid, Image } from 'lucide-react';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import { ResultsPDF } from './ResultsPDF';
 import { ScreenVisualization } from './ScreenVisualization';
 import { usePanelCalculator } from '../hooks/usePanelCalculator';
+import { downloadPixelMap } from '../utils/pixelMapGenerator';
 
 interface ResultsProps {
   panel: Panel | null;
@@ -49,6 +50,14 @@ export function Results({
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900">Results</h2>
+        <div className="flex items-center gap-3">
+        <button
+            onClick={() => downloadPixelMap({ panel, horizontalPanels, verticalPanels, numberingDirection })}
+            className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+          >
+            <Image className="w-4 h-4 mr-2" />
+            Download Pixel Map
+          </button>
         <PDFDownloadLink
           document={
             <ResultsPDF 
@@ -68,6 +77,7 @@ export function Results({
             Download PDF
           </>
         </PDFDownloadLink>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
