@@ -1,46 +1,9 @@
 import { Panel } from '../types/panel';
 
-// Same high-contrast palette used in ScreenVisualization and PDF
-const PORT_COLORS = [
-  '#E6194B', '#3CB44B', '#0082C8', '#F58230', '#911EB4',
-  '#46F0F0', '#F032E6', '#D2F53C', '#FABEBE', '#008080',
-  '#E6BEFF', '#AA6E28', '#FFE119', '#800000', '#82B6E9',
-  '#9A6324', '#A9A9A9', '#FFFFFF', '#000000',
-];
-
 function hexToRgb(hex: string): [number, number, number] {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return [r, g, b];
-}
-
-/** Proper version with verticalPanels captured */
-function getPanelPortIndex(
-  col: number,
-  row: number,
-  horizontalPanels: number,
-  verticalPanels: number,
-  panelsPerPort: number,
-  numberingDirection: 'left' | 'right' | 'top' | 'bottom'
-): number {
-  let linearIndex: number;
-
-  if (numberingDirection === 'left' || numberingDirection === 'right') {
-    const isEvenRow = row % 2 === 0;
-    const colIndex = numberingDirection === 'left'
-      ? (isEvenRow ? col : horizontalPanels - 1 - col)
-      : (isEvenRow ? horizontalPanels - 1 - col : col);
-    linearIndex = row * horizontalPanels + colIndex;
-  } else {
-    const isEvenCol = col % 2 === 0;
-    const rowIndex = numberingDirection === 'top'
-      ? (isEvenCol ? row : verticalPanels - 1 - row)
-      : (isEvenCol ? verticalPanels - 1 - row : row);
-    linearIndex = col * verticalPanels + rowIndex;
-  }
-
-  return Math.floor(linearIndex / panelsPerPort);
+  const clean = hex.replace('#', '');
+  const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
+  return [parseInt(full.slice(0, 2), 16), parseInt(full.slice(2, 4), 16), parseInt(full.slice(4, 6), 16)];
 }
 
 export interface PixelMapOptions {
@@ -48,10 +11,14 @@ export interface PixelMapOptions {
   horizontalPanels: number;
   verticalPanels: number;
   numberingDirection: 'left' | 'right' | 'top' | 'bottom';
+  /** Single fill color for all panels, e.g. '#E6194B'. Defaults to red. */
+  panelColor?: string;
+  /** URL / data-URL of the logo to embed in the top-left corner */
+  logoUrl?: string;
 }
 
 export function generatePixelMap(options: PixelMapOptions): HTMLCanvasElement {
-  const { panel, horizontalPanels, verticalPanels, numberingDirection } = options;
+  const { panel, horizontalPanels, verticalPanels, panelColor = '#E6194B', logoUrl } = options;
 
   // Pixel resolution per panel
   const pixelsPerPanelW = Math.round(panel.width / panel.pixelPitch);
@@ -65,49 +32,36 @@ export function generatePixelMap(options: PixelMapOptions): HTMLCanvasElement {
   canvas.height = canvasH;
   const ctx = canvas.getContext('2d')!;
 
-  // Port grouping
-  const pixelsPerPanel = pixelsPerPanelW * pixelsPerPanelH;
-  const pixelsPerPort = panel.portConfig?.pixelsPerPort || pixelsPerPanel;
-  const panelsPerPort = Math.max(1, Math.floor(pixelsPerPort / pixelsPerPanel));
+  const [r, g, b] = hexToRgb(panelColor);
+  const darkerColor = `rgba(${Math.max(0, r - 60)},${Math.max(0, g - 60)},${Math.max(0, b - 60)},0.85)`;
 
-  // ── Draw each panel ──────────────────────────────────────────────────────────
+  // ── Draw each panel with single color ───────────────────────────────────────
   for (let row = 0; row < verticalPanels; row++) {
     for (let col = 0; col < horizontalPanels; col++) {
-      const portIdx = getPanelPortIndex(col, row, horizontalPanels, verticalPanels, panelsPerPort, numberingDirection);
-      const baseColor = PORT_COLORS[portIdx % PORT_COLORS.length];
-      const [r, g, b] = hexToRgb(baseColor);
-
       const x = col * pixelsPerPanelW;
       const y = row * pixelsPerPanelH;
 
       // Fill panel background
-      ctx.fillStyle = baseColor;
+      ctx.fillStyle = panelColor;
       ctx.fillRect(x, y, pixelsPerPanelW, pixelsPerPanelH);
 
-      // Slightly darker shade for the X diagonal stripes
-      const darkerColor = `rgba(${Math.max(0, r - 60)},${Math.max(0, g - 60)},${Math.max(0, b - 60)},0.85)`;
+      // Diagonal X stripes in darker shade
       const stripeWidth = Math.max(1, Math.round(Math.min(pixelsPerPanelW, pixelsPerPanelH) * 0.07));
-
       ctx.save();
       ctx.strokeStyle = darkerColor;
       ctx.lineWidth = stripeWidth;
       ctx.lineCap = 'round';
-
-      // Diagonal \ 
       ctx.beginPath();
       ctx.moveTo(x, y);
       ctx.lineTo(x + pixelsPerPanelW, y + pixelsPerPanelH);
       ctx.stroke();
-
-      // Diagonal /
       ctx.beginPath();
       ctx.moveTo(x + pixelsPerPanelW, y);
       ctx.lineTo(x, y + pixelsPerPanelH);
       ctx.stroke();
-
       ctx.restore();
 
-      // Panel border (bright line)
+      // Panel border
       ctx.strokeStyle = 'rgba(255,255,255,0.55)';
       ctx.lineWidth = Math.max(1, Math.round(Math.min(pixelsPerPanelW, pixelsPerPanelH) * 0.025));
       ctx.strokeRect(x + 0.5, y + 0.5, pixelsPerPanelW - 1, pixelsPerPanelH - 1);
@@ -115,9 +69,7 @@ export function generatePixelMap(options: PixelMapOptions): HTMLCanvasElement {
   }
 
   // ── Central badge ────────────────────────────────────────────────────────────
-  const screenWidthMm = horizontalPanels * panel.width;
-  const screenHeightMm = verticalPanels * panel.height;
-  const dimensionText = `W ${screenWidthMm} X H ${screenHeightMm}`;
+  const dimensionText = `${canvasW} x ${canvasH} px`;
 
   const badgeCX = canvasW / 2;
   const badgeCY = canvasH / 2;
@@ -172,11 +124,47 @@ export function generatePixelMap(options: PixelMapOptions): HTMLCanvasElement {
   ctx.fillText(dimensionText, badgeCX, badgeCY + fontSize * 0.65);
   ctx.restore();
 
+  // ── Logo (top-left corner) ───────────────────────────────────────────────────
+  if (logoUrl) {
+    const img = new Image();
+    img.src = logoUrl;
+    // Draw synchronously if already loaded (data-URLs load instantly)
+    const logoH = Math.round(Math.min(canvasH * 0.12, 80));
+    const logoW = Math.round(logoH * 3.5); // approximate aspect ratio
+    const pad = Math.round(logoH * 0.3);
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    ctx.drawImage(img, pad, pad, logoW, logoH);
+    ctx.restore();
+  }
+
   return canvas;
 }
 
 export function downloadPixelMap(options: PixelMapOptions): void {
-  const canvas = generatePixelMap(options);
+  if (options.logoUrl) {
+    // Must wait for the logo image to load before drawing
+    const img = new Image();
+    img.onload = () => {
+      const canvas = generatePixelMap(options);
+      // Re-draw logo now that it is loaded
+      const ctx = canvas.getContext('2d')!;
+      const logoH = Math.round(Math.min(canvas.height * 0.12, 80));
+      const logoW = Math.round(logoH * 3.5);
+      const pad = Math.round(logoH * 0.3);
+      ctx.save();
+      ctx.globalAlpha = 0.9;
+      ctx.drawImage(img, pad, pad, logoW, logoH);
+      ctx.restore();
+      triggerDownload(canvas, options);
+    };
+    img.src = options.logoUrl;
+  } else {
+    triggerDownload(generatePixelMap(options), options);
+  }
+}
+
+function triggerDownload(canvas: HTMLCanvasElement, options: PixelMapOptions): void {
   const link = document.createElement('a');
   link.download = `pixelmap-${options.horizontalPanels}x${options.verticalPanels}.png`;
   link.href = canvas.toDataURL('image/png');

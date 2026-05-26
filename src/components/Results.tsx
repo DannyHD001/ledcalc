@@ -17,6 +17,8 @@ interface ResultsProps {
   onNumberingDirectionChange: (direction: 'left' | 'right' | 'top' | 'bottom') => void;
   portStartOverrides?: {[portNumber: number]: number | undefined};
   onPortStartOverridesChange?: (overrides: {[portNumber: number]: number | undefined}) => void;
+  projectName?: string;
+  projectDate?: string;
 }
 
 export function Results({ 
@@ -28,8 +30,18 @@ export function Results({
   numberingDirection, 
   onNumberingDirectionChange,
   portStartOverrides = {},
-  onPortStartOverridesChange
+  onPortStartOverridesChange,
+  projectName,
+  projectDate
 }: ResultsProps) {
+  const calculations = usePanelCalculator({ 
+    panel: panel || undefined, 
+    controller: controller || undefined, 
+    horizontalPanels, 
+    verticalPanels 
+  });
+  const totalPanels = horizontalPanels * verticalPanels;
+
   if (!panel) {
     return (
       <div className="p-6">
@@ -38,21 +50,13 @@ export function Results({
     );
   }
 
-  const calculations = usePanelCalculator({ 
-    panel, 
-    controller: controller || undefined, 
-    horizontalPanels, 
-    verticalPanels 
-  });
-  const totalPanels = horizontalPanels * verticalPanels;
-
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900">Results</h2>
         <div className="flex items-center gap-3">
         <button
-            onClick={() => downloadPixelMap({ panel, horizontalPanels, verticalPanels, numberingDirection })}
+            onClick={() => downloadPixelMap({ panel, horizontalPanels, verticalPanels, numberingDirection, logoUrl: logo })}
             className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
           >
             <Image className="w-4 h-4 mr-2" />
@@ -67,15 +71,20 @@ export function Results({
               verticalPanels={verticalPanels}
               logo={logo}
               numberingDirection={numberingDirection}
+              projectName={projectName}
+              projectDate={projectDate}
             />
           }
-          fileName={`led-screen-configuration-${panel.name.toLowerCase().replace(/\s+/g, '-')}.pdf`}
+          fileName={[
+            projectName ? projectName.replace(/\s+/g, '-') : null,
+            panel.name.replace(/\s+/g, '-'),
+            `${horizontalPanels}x${verticalPanels}`,
+            `${calculations.resolution.horizontal}x${calculations.resolution.vertical}px`,
+          ].filter(Boolean).join('_').toLowerCase() + '.pdf'}
           className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
         >
-          <>
-            <Download className="w-4 h-4 mr-2" />
-            Download PDF
-          </>
+          <Download className="w-4 h-4 mr-2" />
+          Download PDF
         </PDFDownloadLink>
         </div>
       </div>

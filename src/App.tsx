@@ -24,6 +24,8 @@ function App() {
   const [verticalPanels, setVerticalPanels] = useState(1);
   const [numberingDirection, setNumberingDirection] = useState<'left' | 'right' | 'top' | 'bottom'>('left');
   const [portStartOverrides, setPortStartOverrides] = useState<{[portNumber: number]: number | undefined}>({});
+  const [projectName, setProjectName] = useState('');
+  const [projectDate, setProjectDate] = useState(() => new Date().toISOString().slice(0, 10));
   const { panels, loading, error, showErrorModal, clearError, savePanel, removePanel, refreshPanels } = useDatabase();
   const { 
     controllers, 
@@ -54,6 +56,32 @@ function App() {
         <Tabs>
           <TabPanel label="Configuration">
             <div className="space-y-8">
+              {/* Project Info */}
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Project Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
+                    <input
+                      type="text"
+                      value={projectName}
+                      onChange={e => setProjectName(e.target.value)}
+                      placeholder="e.g. Main Stage 2026"
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Project Date</label>
+                    <input
+                      type="date"
+                      value={projectDate}
+                      onChange={e => setProjectDate(e.target.value)}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <AdminRequests 
                 onPanelApproved={refreshPanels} 
                 onControllerApproved={refreshControllers}
@@ -194,6 +222,8 @@ function App() {
                 onNumberingDirectionChange={setNumberingDirection}
                 portStartOverrides={portStartOverrides}
                 onPortStartOverridesChange={setPortStartOverrides}
+                projectName={projectName}
+                projectDate={projectDate}
               />
             ) : (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">

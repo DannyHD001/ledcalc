@@ -70,9 +70,11 @@ interface ResultsPDFProps {
   verticalPanels: number;
   logo?: string;
   numberingDirection?: 'left' | 'right' | 'top' | 'bottom';
+  projectName?: string;
+  projectDate?: string;
 }
 
-export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPanels, logo, numberingDirection = 'left' }: ResultsPDFProps) {
+export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPanels, logo, numberingDirection = 'left', projectName, projectDate }: ResultsPDFProps) {
   // Debug: Log logo prop
   console.log('ResultsPDF - Logo prop:', logo);
   // --- Visualization helpers (simplified mirror of on-screen logic) ---
@@ -189,6 +191,8 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
           )}
           <View style={styles.headerContent}>
             <Text style={styles.title}>LED Screen Configuration</Text>
+            {projectName ? <Text style={{ fontSize: 13, textAlign: 'center', marginTop: 4, color: '#333' }}>{projectName}</Text> : null}
+            {projectDate ? <Text style={{ fontSize: 10, textAlign: 'center', marginTop: 2, color: '#666' }}>{projectDate}</Text> : null}
           </View>
         </View>
 
