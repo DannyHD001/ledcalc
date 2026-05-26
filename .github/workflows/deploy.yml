@@ -33,11 +33,14 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
 
       - name: Deploy to gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
           git fetch origin gh-pages:gh-pages 2>/dev/null || true
-          git checkout gh-pages 2>/dev/null || git checkout --orphan gh-pages && git reset --hard
+          git checkout gh-pages 2>/dev/null || (git checkout --orphan gh-pages && git reset --hard)
           find . -maxdepth 1 ! -name "." ! -name ".." ! -name ".git" ! -name "dist" -exec rm -rf {} +
           cp -r dist/. .
           rm -rf dist
