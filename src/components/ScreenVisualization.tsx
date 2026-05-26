@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Panel } from '../types/panel';
 import { Controller } from '../types/controller';
 import { Circle, Wrench, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
@@ -211,15 +211,6 @@ export function ScreenVisualization({
     return Array.from({ length: count }, (_, i) => colors[i % colors.length]);
   };
 
-  const lineColors = generateLineColors(lineCalc.linesNeeded);
-
-  // Get which line a panel belongs to based on snake order
-  const getPanelLine = (panelNumber: number) => {
-    // Panel numbers are 1-based, so subtract 1 to make them 0-based for calculation
-    const panelsPerLine = lineCalc.panelsPerLine;
-    return Math.floor((panelNumber - 1) / panelsPerLine);
-  };
-
   // Generate snake-ordered panel sequence
   const generateSnakeSequence = () => {
     const sequence = [];
@@ -241,80 +232,61 @@ export function ScreenVisualization({
     return sequence.sort((a, b) => a.panelNumber - b.panelNumber);
   };
 
-  // Render processor lines following snake pattern with boundary-aware grouping
-  const renderProcessorLines = () => {
-    if (!showProcessorLines || lineCalc.linesNeeded === 0) return null;
+  // Shared boundary helper
+  const isBoundaryPanel = (row: number, col: number) => {
+    switch (numberingDirection) {
+      case 'left':
+        return (row % 2 === 0 && col === horizontalPanels - 1) || (row % 2 === 1 && col === 0);
+      case 'right':
+        return (row % 2 === 0 && col === 0) || (row % 2 === 1 && col === horizontalPanels - 1);
+      case 'top':
+        return (col % 2 === 0 && row === verticalPanels - 1) || (col % 2 === 1 && row === 0);
+      case 'bottom':
+        return (col % 2 === 0 && row === 0) || (col % 2 === 1 && row === verticalPanels - 1);
+      default:
+        return false;
+    }
+  };
 
+  // Compute port groups (shared by panel coloring and SVG lines)
+  type PanelNode = ReturnType<typeof generateSnakeSequence>[number];
+  const portGroups: PanelNode[][] = useMemo(() => {
+    if (lineCalc.linesNeeded === 0) return [];
     const snakeSequence = generateSnakeSequence();
-    type PanelNode = typeof snakeSequence[number];
-    const capacity = lineCalc.panelsPerLine; // maximum panels per port (may use fewer to end at boundary)
-
-    const isBoundaryPanel = (row: number, col: number) => {
-      switch (numberingDirection) {
-        case 'left':
-          return (row % 2 === 0 && col === horizontalPanels - 1) || (row % 2 === 1 && col === 0);
-        case 'right':
-          return (row % 2 === 0 && col === 0) || (row % 2 === 1 && col === horizontalPanels - 1);
-        case 'top':
-          return (col % 2 === 0 && row === verticalPanels - 1) || (col % 2 === 1 && row === 0);
-        case 'bottom':
-          return (col % 2 === 0 && row === 0) || (col % 2 === 1 && row === verticalPanels - 1);
-        default:
-          return false;
-      }
-    };
-
     const groups: PanelNode[][] = [];
-    let i = 0;
-    
-    // Check if we have any port overrides configured
     const hasOverrides = Object.values(portStartOverrides).some(val => val !== undefined);
-    
+
     if (hasOverrides) {
-      // Use override logic: create groups based on user-defined starting panels
       const overrideEntries = Object.entries(portStartOverrides)
-        .filter(([_, startPanel]) => startPanel !== undefined)
-        .map(([portStr, startPanel]) => ({
-          port: parseInt(portStr),
-          startPanel: startPanel!
-        }))
-        .sort((a, b) => a.startPanel - b.startPanel); // Sort by starting panel number
-      
+        .filter(([_, sp]) => sp !== undefined)
+        .map(([portStr, sp]) => ({ port: parseInt(portStr), startPanel: sp! }))
+        .sort((a, b) => a.startPanel - b.startPanel);
+
       overrideEntries.forEach((entry, idx) => {
-        const startPanelIndex = snakeSequence.findIndex(p => p.panelNumber === entry.startPanel);
-        if (startPanelIndex === -1) return; // Invalid panel number
-        
-        // Calculate end index for this group
-        let endIndex;
+        const startIdx = snakeSequence.findIndex(p => p.panelNumber === entry.startPanel);
+        if (startIdx === -1) return;
+        let endIdx;
         if (idx < overrideEntries.length - 1) {
-          // Not the last group - end before the next override starts
-          const nextStartPanelIndex = snakeSequence.findIndex(p => p.panelNumber === overrideEntries[idx + 1].startPanel);
-          endIndex = nextStartPanelIndex === -1 ? snakeSequence.length : nextStartPanelIndex;
+          const nextIdx = snakeSequence.findIndex(p => p.panelNumber === overrideEntries[idx + 1].startPanel);
+          endIdx = nextIdx === -1 ? snakeSequence.length : nextIdx;
         } else {
-          // Last group - take all remaining panels
-          endIndex = snakeSequence.length;
+          endIdx = snakeSequence.length;
         }
-        
-        // Add the group if it has panels
-        if (startPanelIndex < endIndex) {
-          groups.push(snakeSequence.slice(startPanelIndex, endIndex));
-        }
+        if (startIdx < endIdx) groups.push(snakeSequence.slice(startIdx, endIdx));
       });
     } else {
-      // Use original automatic logic
+      const capacity = lineCalc.panelsPerLine;
+      let i = 0;
       while (i < snakeSequence.length && groups.length < processorConfig.maxPorts) {
         const start = i;
-        let lastBoundaryEnd = -1; // exclusive index after boundary panel
+        let lastBoundaryEnd = -1;
         let count = 0;
         while (i < snakeSequence.length && count < capacity) {
           const p = snakeSequence[i];
           count++;
           if (isBoundaryPanel(p.row, p.col)) {
             lastBoundaryEnd = i + 1;
-            if (count === capacity) {
-              i++;
-              break;
-            }
+            if (count === capacity) { i++; break; }
           }
           i++;
         }
@@ -324,6 +296,31 @@ export function ScreenVisualization({
         i = end;
       }
     }
+    return groups;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panel, controller, horizontalPanels, verticalPanels, numberingDirection, portStartOverrides, lineCalc.linesNeeded, lineCalc.panelsPerLine]);
+
+  // Map panelNumber → port group index
+  const panelLineMap = useMemo(() => {
+    const map = new Map<number, number>();
+    portGroups.forEach((group, idx) => group.forEach(p => map.set(p.panelNumber, idx)));
+    return map;
+  }, [portGroups]);
+
+  const lineColors = generateLineColors(Math.max(portGroups.length, lineCalc.linesNeeded));
+
+  // Get which line a panel belongs to (override-aware)
+  const getPanelLine = (panelNumber: number) => {
+    const mapped = panelLineMap.get(panelNumber);
+    if (mapped !== undefined) return mapped;
+    return Math.floor((panelNumber - 1) / lineCalc.panelsPerLine);
+  };
+
+  // Render processor lines following snake pattern with boundary-aware grouping
+  const renderProcessorLines = () => {
+    if (!showProcessorLines || portGroups.length === 0) return null;
+
+    const groups = portGroups;
 
     // Helper to build path that ends on the last panel only
     const buildPath = (pts: {x:number,y:number}[]) => {
@@ -698,7 +695,7 @@ export function ScreenVisualization({
                       R{row + 1}C{col + 1}
                     </div>
                     {/* Panel line indicator */}
-                    {showProcessorLines && lineCalc.linesNeeded > 0 && (
+                    {showProcessorLines && portGroups.length > 0 && (
                       <div 
                         className="absolute bottom-1 right-1 w-3 h-3 rounded-full border-2 border-white"
                         style={{ 
@@ -723,11 +720,11 @@ export function ScreenVisualization({
         <p>Snake patterns: Continuous zigzag numbering following physical panel connections</p>
         <p>L→R: Start left, alternate directions each row | R→L: Start right, alternate directions each row</p>
         <p>T→B: Start top, alternate directions each column | B→T: Start bottom, alternate directions each column</p>
-        {showProcessorLines && lineCalc.linesNeeded > 0 && (
+        {showProcessorLines && portGroups.length > 0 && (
           <>
             <p className="mt-2 font-medium text-gray-600">Processor Port Legend:</p>
             <div className="flex flex-wrap gap-2 mt-1">
-              {lineColors.slice(0, lineCalc.linesNeeded).map((color, index) => (
+              {lineColors.slice(0, portGroups.length).map((color, index) => (
                 <div key={index} className="flex items-center gap-1">
                   <div 
                     className="w-3 h-3 rounded-full border border-gray-300"
