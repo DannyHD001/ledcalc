@@ -88,31 +88,7 @@ function App() {
               />
               
               <DatabaseCleanup />
-              
-              <PanelSelector 
-                panels={panels}
-                selectedPanel={selectedPanel}
-                onPanelSelect={setSelectedPanel}
-                onSavePanel={savePanel}
-                onDeletePanel={removePanel}
-                loading={loading}
-                error={error}
-                showErrorModal={showErrorModal}
-                onClearError={clearError}
-              />
-              
-              <ControllerSelector
-                controllers={controllers}
-                selectedController={selectedController}
-                onControllerSelect={setSelectedController}
-                onSaveController={saveController}
-                onDeleteController={removeController}
-                loading={controllerLoading}
-                error={controllerError}
-                showErrorModal={showControllerErrorModal}
-                onClearError={clearControllerError}
-              />
-              
+
               {/* Progress hints for user */}
               {!selectedPanel && !selectedController && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
@@ -167,6 +143,31 @@ function App() {
                   <p className="text-green-700 text-sm">Perfect! Configure your screen dimensions below.</p>
                 </div>
               )}
+              
+              <PanelSelector 
+                panels={panels}
+                selectedPanel={selectedPanel}
+                onPanelSelect={setSelectedPanel}
+                onSavePanel={savePanel}
+                onDeletePanel={removePanel}
+                loading={loading}
+                error={error}
+                showErrorModal={showErrorModal}
+                onClearError={clearError}
+              />
+              
+              <ControllerSelector
+                controllers={controllers}
+                selectedController={selectedController}
+                onControllerSelect={setSelectedController}
+                onSaveController={saveController}
+                onDeleteController={removeController}
+                loading={controllerLoading}
+                error={controllerError}
+                showErrorModal={showControllerErrorModal}
+                onClearError={clearControllerError}
+              />
+              
               
               {selectedPanel && selectedController && (
                 <ScreenConfig
