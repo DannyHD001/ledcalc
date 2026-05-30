@@ -53,7 +53,7 @@ export function ScreenVisualization({
 
   const PANEL_WIDTH = 100; // Width of each panel in pixels
   const PANEL_GAP = 2; // Gap between panels
-  const HEADER_HEIGHT = 24; // Height of the header section
+  const HEADER_HEIGHT = 40; // Height of the header section
 
   const renderAttachmentPoint = () => (
     panel.headerConfig.attachmentType === 'shackle' ? (
@@ -83,17 +83,19 @@ export function ScreenVisualization({
               width: headerWidth
             }}
           >
-            <div className="relative w-full">
-              <div className="absolute left-1/4 -top-2">
+            <div className="relative w-full" style={{ height: HEADER_HEIGHT }}>
+              {/* Left attachment point */}
+              <div className="absolute" style={{ left: '25%', top: 0, transform: 'translateX(-50%)' }}>
                 {renderAttachmentPoint()}
               </div>
-              <div className="absolute right-1/4 -top-2">
+              {/* Right attachment point */}
+              <div className="absolute" style={{ left: '75%', top: 0, transform: 'translateX(-50%)' }}>
                 {renderAttachmentPoint()}
               </div>
-              <div className="absolute left-1/2 transform -translate-x-1/2">
-                <div className="h-4 w-1 bg-gray-800" />
-              </div>
-              <div className="w-full h-1 bg-gray-800 mt-3" />
+              {/* Center stem */}
+              <div className="absolute bg-gray-800" style={{ left: '50%', transform: 'translateX(-50%)', top: 20, width: 3, bottom: 8 }} />
+              {/* Horizontal bar */}
+              <div className="absolute bg-gray-800" style={{ left: 4, right: 4, bottom: 4, height: 8, borderRadius: 2 }} />
             </div>
           </div>
         );
@@ -112,14 +114,15 @@ export function ScreenVisualization({
               width: PANEL_WIDTH
             }}
           >
-            <div className="relative w-full">
-              <div className="absolute left-1/2 -top-2 transform -translate-x-1/2">
+            <div className="relative w-full" style={{ height: HEADER_HEIGHT }}>
+              {/* Center attachment point */}
+              <div className="absolute" style={{ left: '50%', top: 0, transform: 'translateX(-50%)' }}>
                 {renderAttachmentPoint()}
               </div>
-              <div className="absolute left-1/2 transform -translate-x-1/2">
-                <div className="h-4 w-1 bg-gray-800" />
-              </div>
-              <div className="w-full h-1 bg-gray-800 mt-3" />
+              {/* Center stem */}
+              <div className="absolute bg-gray-800" style={{ left: '50%', transform: 'translateX(-50%)', top: 20, width: 3, bottom: 8 }} />
+              {/* Horizontal bar */}
+              <div className="absolute bg-gray-800" style={{ left: 4, right: 4, bottom: 4, height: 8, borderRadius: 2 }} />
             </div>
           </div>
         );
