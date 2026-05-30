@@ -73,6 +73,8 @@ export function Results({
               numberingDirection={numberingDirection}
               projectName={projectName}
               projectDate={projectDate}
+              controller={controller}
+              portStartOverrides={portStartOverrides}
             />
           }
           fileName={[

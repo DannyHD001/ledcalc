@@ -1,6 +1,7 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Image, Svg, Rect, Path } from '@react-pdf/renderer';
 import { Panel } from '../types/panel';
+import { Controller } from '../types/controller';
 
 // Create styles
 const styles = StyleSheet.create({
@@ -72,9 +73,11 @@ interface ResultsPDFProps {
   numberingDirection?: 'left' | 'right' | 'top' | 'bottom';
   projectName?: string;
   projectDate?: string;
+  controller?: Controller | null;
+  portStartOverrides?: {[portNumber: number]: number | undefined};
 }
 
-export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPanels, logo, numberingDirection = 'left', projectName, projectDate }: ResultsPDFProps) {
+export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPanels, logo, numberingDirection = 'left', projectName, projectDate, controller, portStartOverrides = {} }: ResultsPDFProps) {
   // Debug: Log logo prop
   console.log('ResultsPDF - Logo prop:', logo);
   // --- Visualization helpers (simplified mirror of on-screen logic) ---
@@ -94,7 +97,8 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
   };
 
   const pixelsPerPanel = (panel.width / panel.pixelPitch) * (panel.height / panel.pixelPitch);
-  const pixelsPerPort = 500000; // Default fallback value
+  const pixelsPerPort = controller ? controller.pixelsPerPort : 500000;
+  const maxPortsFromController = controller ? controller.ports : 8;
   const panelsPerLine = Math.max(1, Math.floor(pixelsPerPort / pixelsPerPanel));
   // High-contrast color-blind friendly palette (extended)
   const lineColors = [
@@ -146,15 +150,35 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
     }
   };
   const groups: PanelNode[][] = [];
-  let i = 0; const capacity = panelsPerLine; const maxPorts = 8; // Default fallback
-  while (i < snake.length && groups.length < maxPorts) {
-    const start = i; let lastBoundaryEnd = -1; let count = 0;
-    while (i < snake.length && count < capacity) {
-      const p = snake[i]; count++; if (isBoundary(p.row,p.col)) { lastBoundaryEnd = i+1; if (count===capacity) { i++; break; } }
-      i++;
+  const hasOverrides = Object.values(portStartOverrides).some(val => val !== undefined);
+  if (hasOverrides) {
+    const overrideEntries = Object.entries(portStartOverrides)
+      .filter(([_, sp]) => sp !== undefined)
+      .map(([portStr, sp]) => ({ port: parseInt(portStr), startPanel: sp! }))
+      .sort((a, b) => a.startPanel - b.startPanel);
+    overrideEntries.forEach((entry, idx) => {
+      const startIdx = snake.findIndex(p => p.num === entry.startPanel);
+      if (startIdx === -1) return;
+      let endIdx: number;
+      if (idx < overrideEntries.length - 1) {
+        const nextIdx = snake.findIndex(p => p.num === overrideEntries[idx + 1].startPanel);
+        endIdx = nextIdx === -1 ? snake.length : nextIdx;
+      } else {
+        endIdx = snake.length;
+      }
+      if (startIdx < endIdx) groups.push(snake.slice(startIdx, endIdx));
+    });
+  } else {
+    let i = 0; const capacity = panelsPerLine; const maxPorts = maxPortsFromController;
+    while (i < snake.length && groups.length < maxPorts) {
+      const start = i; let lastBoundaryEnd = -1; let count = 0;
+      while (i < snake.length && count < capacity) {
+        const p = snake[i]; count++; if (isBoundary(p.row,p.col)) { lastBoundaryEnd = i+1; if (count===capacity) { i++; break; } }
+        i++;
+      }
+      const end = lastBoundaryEnd !== -1 ? lastBoundaryEnd : i; if (end <= start) break;
+      groups.push(snake.slice(start,end)); i = end;
     }
-    const end = lastBoundaryEnd !== -1 ? lastBoundaryEnd : i; if (end <= start) break;
-    groups.push(snake.slice(start,end)); i = end;
   }
   // Build path string for group
   const buildPath = (g: PanelNode[]) => g.reduce((acc,p,idx)=> idx===0 ? `M ${p.x} ${p.y}` : acc+` L ${p.x} ${p.y}`,'');
