@@ -111,7 +111,7 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
   const PAGE_INNER_WIDTH = 842 - 60; // padding already in page style
   const PAGE_INNER_HEIGHT = 595 - 60;
   const gap = 2;
-  const pdfHeaderH = 14; // space above grid for rigging header bars
+  const pdfHeaderH = 24; // space above grid for rigging header bars
   const cellSize = Math.min(
     (PAGE_INNER_WIDTH - (horizontalPanels - 1) * gap) / horizontalPanels,
     (PAGE_INNER_HEIGHT - pdfHeaderH - (verticalPanels - 1) * gap) / verticalPanels
@@ -204,22 +204,35 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
   const pdfRiggingHeaders: JSX.Element[] = [];
   {
     let pos = 0;
+    const hInset = 3;      // inset bar from panel edges so adjacent headers have visible gap
+    const barH = 5;        // thick horizontal bar
+    const stemW = 2.5;     // wide vertical stem
+    const dotR = Math.max(4.5, cellSize * 0.07);
+    const barY = pdfHeaderH - barH - 1;
+    const dotCY = dotR + 1;
+    const stemTop = dotCY + dotR;
     while (pos < horizontalPanels) {
       const x = pos * (cellSize + gap);
-      const dotR = Math.max(1.8, cellSize * 0.04);
-      const barY = pdfHeaderH - 2.5;
-      const dotCY = pdfHeaderH * 0.38;
       if (pos + 1 < horizontalPanels) {
         const w = cellSize * 2 + gap;
-        pdfRiggingHeaders.push(<Rect key={`hbar-${pos}`} x={x} y={barY} width={w} height={1.5} fill="#374151" />);
-        pdfRiggingHeaders.push(<Rect key={`hvc-${pos}`} x={x + w / 2 - 0.5} y={dotCY + dotR} width={1} height={barY - (dotCY + dotR)} fill="#374151" />);
-        pdfRiggingHeaders.push(<Path key={`hdl-${pos}`} d={`M ${x + w * 0.25 - dotR},${dotCY} a ${dotR},${dotR} 0 1,0 ${dotR * 2},0 a ${dotR},${dotR} 0 1,0 ${-dotR * 2},0`} fill="#f97316" />);
-        pdfRiggingHeaders.push(<Path key={`hdrr-${pos}`} d={`M ${x + w * 0.75 - dotR},${dotCY} a ${dotR},${dotR} 0 1,0 ${dotR * 2},0 a ${dotR},${dotR} 0 1,0 ${-dotR * 2},0`} fill="#f97316" />);
+        // horizontal bar
+        pdfRiggingHeaders.push(<Rect key={`hbar-${pos}`} x={x + hInset} y={barY} width={w - hInset * 2} height={barH} fill="#1f2937" />);
+        // center stem
+        const stemX = x + w / 2 - stemW / 2;
+        pdfRiggingHeaders.push(<Rect key={`hvc-${pos}`} x={stemX} y={stemTop} width={stemW} height={barY - stemTop} fill="#1f2937" />);
+        // two attachment dots
+        const dot1x = x + w * 0.25;
+        const dot2x = x + w * 0.75;
+        pdfRiggingHeaders.push(<Path key={`hdl-${pos}`} d={`M ${dot1x - dotR},${dotCY} a ${dotR},${dotR} 0 1,0 ${dotR * 2},0 a ${dotR},${dotR} 0 1,0 ${-dotR * 2},0`} fill="#f97316" />);
+        pdfRiggingHeaders.push(<Path key={`hdrr-${pos}`} d={`M ${dot2x - dotR},${dotCY} a ${dotR},${dotR} 0 1,0 ${dotR * 2},0 a ${dotR},${dotR} 0 1,0 ${-dotR * 2},0`} fill="#f97316" />);
         pos += 2;
       } else {
-        pdfRiggingHeaders.push(<Rect key={`hbar-${pos}`} x={x} y={barY} width={cellSize} height={1.5} fill="#374151" />);
-        pdfRiggingHeaders.push(<Rect key={`hvc-${pos}`} x={x + cellSize / 2 - 0.5} y={dotCY + dotR} width={1} height={barY - (dotCY + dotR)} fill="#374151" />);
-        pdfRiggingHeaders.push(<Path key={`hds-${pos}`} d={`M ${x + cellSize / 2 - dotR},${dotCY} a ${dotR},${dotR} 0 1,0 ${dotR * 2},0 a ${dotR},${dotR} 0 1,0 ${-dotR * 2},0`} fill="#f97316" />);
+        // single header
+        pdfRiggingHeaders.push(<Rect key={`hbar-${pos}`} x={x + hInset} y={barY} width={cellSize - hInset * 2} height={barH} fill="#1f2937" />);
+        const stemX = x + cellSize / 2 - stemW / 2;
+        pdfRiggingHeaders.push(<Rect key={`hvc-${pos}`} x={stemX} y={stemTop} width={stemW} height={barY - stemTop} fill="#1f2937" />);
+        const dotCx = x + cellSize / 2;
+        pdfRiggingHeaders.push(<Path key={`hds-${pos}`} d={`M ${dotCx - dotR},${dotCY} a ${dotR},${dotR} 0 1,0 ${dotR * 2},0 a ${dotR},${dotR} 0 1,0 ${-dotR * 2},0`} fill="#f97316" />);
         pos += 1;
       }
     }
