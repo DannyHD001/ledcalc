@@ -11,7 +11,7 @@ export function DatabaseStatus() {
 
   return (
     <div
-      title={isUsingFirestore ? 'Connected to Firestore' : 'Using Local Storage'}
+      title={isUsingFirestore ? 'Connected to DB' : 'Using Local Storage'}
       className={`flex items-center justify-center w-7 h-7 rounded-full ${
         isUsingFirestore ? 'text-green-500' : 'text-red-500'
       }`}
