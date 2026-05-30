@@ -331,12 +331,8 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
             {snake.map(p=> {
               const x = p.col * (cellSize + gap);
               const y = p.row * (cellSize + gap);
-              const color = lineColors[p.port % lineColors.length];
               return (
-                <React.Fragment key={`panel-${p.num}`}>
-                  <Rect x={x} y={y} width={cellSize} height={cellSize} stroke="#444" strokeWidth={0.5} fill="#0f172a" />
-                  <Rect x={x+cellSize-6} y={y+cellSize-6} width={6} height={6} fill={color} />
-                </React.Fragment>
+                <Rect key={`panel-${p.num}`} x={x} y={y} width={cellSize} height={cellSize} stroke="#444" strokeWidth={0.5} fill="#0f172a" />
               );
             })}
             {/* Data lines on top */}
