@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Panel } from '../types/panel';
-import { PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Search } from 'lucide-react';
 import { PanelForm } from './PanelForm';
 import { useAuth } from '../hooks/useAuth';
 import { ErrorModal } from './ErrorModal';
@@ -30,7 +30,12 @@ export function PanelSelector({
 }: PanelSelectorProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingPanel, setEditingPanel] = useState<Panel | null>(null);
+  const [search, setSearch] = useState('');
   const { isAuthenticated } = useAuth();
+
+  const filteredPanels = panels.filter(p =>
+    `${p.manufacturer} ${p.name} ${p.pixelPitch}`.toLowerCase().includes(search.toLowerCase())
+  );
 
   if (loading) {
     return (
@@ -83,8 +88,18 @@ export function PanelSelector({
         </div>
       ) : (
         <>
-          <div className="flex justify-between items-center">
+          <div className="flex flex-wrap gap-3 items-center justify-between">
             <h2 className="text-lg font-medium text-gray-900">LED Panel Selection</h2>
+            <div className="flex flex-1 min-w-48 max-w-sm items-center gap-2 bg-white border border-gray-300 rounded-md px-3 py-2 shadow-sm focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
+              <Search className="w-4 h-4 text-gray-400 shrink-0" />
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search panels..."
+                className="flex-1 text-sm bg-transparent outline-none placeholder-gray-400"
+              />
+            </div>
             {isAuthenticated && (
               <button
                 onClick={() => setShowForm(true)}
@@ -97,7 +112,10 @@ export function PanelSelector({
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {panels.map((panel) => (
+            {filteredPanels.length === 0 && (
+              <p className="col-span-full text-sm text-gray-400 text-center py-6">No panels match your search.</p>
+            )}
+            {filteredPanels.map((panel) => (
               <div
                 key={panel.id}
                 onClick={() => onPanelSelect(panel)}

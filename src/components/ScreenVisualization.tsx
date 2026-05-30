@@ -662,7 +662,7 @@ export function ScreenVisualization({
             height: totalHeight + HEADER_HEIGHT + 16 // 16px for padding
           }}
         >
-          <div className="relative">
+          <div className="relative" style={{ marginTop: HEADER_HEIGHT }}>
             {renderHeaders()}
             <div 
               className="grid relative"

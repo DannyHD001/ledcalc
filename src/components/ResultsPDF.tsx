@@ -111,9 +111,10 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
   const PAGE_INNER_WIDTH = 842 - 60; // padding already in page style
   const PAGE_INNER_HEIGHT = 595 - 60;
   const gap = 2;
+  const pdfHeaderH = 14; // space above grid for rigging header bars
   const cellSize = Math.min(
     (PAGE_INNER_WIDTH - (horizontalPanels - 1) * gap) / horizontalPanels,
-    (PAGE_INNER_HEIGHT - (verticalPanels - 1) * gap) / verticalPanels
+    (PAGE_INNER_HEIGHT - pdfHeaderH - (verticalPanels - 1) * gap) / verticalPanels
   );
   const gridWidth = horizontalPanels * cellSize + (horizontalPanels - 1) * gap;
   const gridHeight = verticalPanels * cellSize + (verticalPanels - 1) * gap;
@@ -135,7 +136,7 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
     for (let c = 0; c < horizontalPanels; c++) {
       const n = getPanelNumber(r,c);
       const x = c * (cellSize + gap) + cellSize/2;
-      const y = r * (cellSize + gap) + cellSize/2;
+      const y = r * (cellSize + gap) + cellSize/2 + pdfHeaderH;
       snake.push({ num:n,row:r,col:c,x,y,port:getPortIndex(n)});
     }
   }
@@ -199,7 +200,30 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
     }
     return arrows;
   };
-  // Panels for drawing legend mapping
+  // Pre-compute rigging header elements for PDF
+  const pdfRiggingHeaders: JSX.Element[] = [];
+  {
+    let pos = 0;
+    while (pos < horizontalPanels) {
+      const x = pos * (cellSize + gap);
+      const dotR = Math.max(1.8, cellSize * 0.04);
+      const barY = pdfHeaderH - 2.5;
+      const dotCY = pdfHeaderH * 0.38;
+      if (pos + 1 < horizontalPanels) {
+        const w = cellSize * 2 + gap;
+        pdfRiggingHeaders.push(<Rect key={`hbar-${pos}`} x={x} y={barY} width={w} height={1.5} fill="#374151" />);
+        pdfRiggingHeaders.push(<Rect key={`hvc-${pos}`} x={x + w / 2 - 0.5} y={dotCY + dotR} width={1} height={barY - (dotCY + dotR)} fill="#374151" />);
+        pdfRiggingHeaders.push(<Path key={`hdl-${pos}`} d={`M ${x + w * 0.25 - dotR},${dotCY} a ${dotR},${dotR} 0 1,0 ${dotR * 2},0 a ${dotR},${dotR} 0 1,0 ${-dotR * 2},0`} fill="#f97316" />);
+        pdfRiggingHeaders.push(<Path key={`hdrr-${pos}`} d={`M ${x + w * 0.75 - dotR},${dotCY} a ${dotR},${dotR} 0 1,0 ${dotR * 2},0 a ${dotR},${dotR} 0 1,0 ${-dotR * 2},0`} fill="#f97316" />);
+        pos += 2;
+      } else {
+        pdfRiggingHeaders.push(<Rect key={`hbar-${pos}`} x={x} y={barY} width={cellSize} height={1.5} fill="#374151" />);
+        pdfRiggingHeaders.push(<Rect key={`hvc-${pos}`} x={x + cellSize / 2 - 0.5} y={dotCY + dotR} width={1} height={barY - (dotCY + dotR)} fill="#374151" />);
+        pdfRiggingHeaders.push(<Path key={`hds-${pos}`} d={`M ${x + cellSize / 2 - dotR},${dotCY} a ${dotR},${dotR} 0 1,0 ${dotR * 2},0 a ${dotR},${dotR} 0 1,0 ${-dotR * 2},0`} fill="#f97316" />);
+        pos += 1;
+      }
+    }
+  }
 
   return (
     <Document>
@@ -325,12 +349,14 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
       <Page size="A4" orientation="landscape" style={styles.page}>
         <Text style={styles.title}>Screen Visualization</Text>
         <Text style={{ fontSize: 10, marginBottom: 6 }}>Numbering Direction: {numberingDirection.toUpperCase()}</Text>
-        <View style={{ position:'relative', width: gridWidth, height: gridHeight + 24 }}>
-          <Svg width={gridWidth} height={gridHeight + 24}>
+        <View style={{ position:'relative', width: gridWidth, height: pdfHeaderH + gridHeight + 24 }}>
+          <Svg width={gridWidth} height={pdfHeaderH + gridHeight + 24}>
+            {/* Rigging headers */}
+            {pdfRiggingHeaders}
             {/* Panels first so lines drawn later appear above */}
             {snake.map(p=> {
               const x = p.col * (cellSize + gap);
-              const y = p.row * (cellSize + gap);
+              const y = p.row * (cellSize + gap) + pdfHeaderH;
               return (
                 <Rect key={`panel-${p.num}`} x={x} y={y} width={cellSize} height={cellSize} stroke="#444" strokeWidth={0.5} fill="#0f172a" />
               );
@@ -347,13 +373,13 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
             })}
             {/* Legend color boxes */}
             {groups.map((_,i)=> (
-              <Rect key={`leg-${i}`} x={i*50} y={gridHeight+4} width={10} height={10} fill={lineColors[i % lineColors.length]} />
+              <Rect key={`leg-${i}`} x={i*50} y={pdfHeaderH+gridHeight+4} width={10} height={10} fill={lineColors[i % lineColors.length]} />
             ))}
           </Svg>
           {/* Text overlays for panel numbers & labels */}
           {snake.map(p=> {
             const x = p.col * (cellSize + gap);
-            const y = p.row * (cellSize + gap);
+            const y = p.row * (cellSize + gap) + pdfHeaderH;
             return (
               <Text key={`num-${p.num}`} style={{ position:'absolute', left: x, top: y, width: cellSize, height: cellSize, textAlign:'center', fontSize: Math.max(6, cellSize*0.18), color:'#ffffff', paddingTop: (cellSize/2)-4 }}>
                 {p.num}
@@ -361,12 +387,12 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
             );
           })}
           {groups.map((g,i)=> (
-            <Text key={`lbl-${i}`} style={{ position:'absolute', left: g[0].col*(cellSize+gap), top: g[0].row*(cellSize+gap)-10, fontSize:8, color: lineColors[i % lineColors.length] }}>
+            <Text key={`lbl-${i}`} style={{ position:'absolute', left: g[0].col*(cellSize+gap), top: g[0].row*(cellSize+gap)-10+pdfHeaderH, fontSize:8, color: lineColors[i % lineColors.length] }}>
               P{i+1} ({g[0].num}-{g[g.length-1].num})
             </Text>
           ))}
           {groups.map((_,i)=> (
-            <Text key={`leglbl-${i}`} style={{ position:'absolute', left: i*50+14, top: gridHeight+3, fontSize:8 }}>P{i+1}</Text>
+            <Text key={`leglbl-${i}`} style={{ position:'absolute', left: i*50+14, top: pdfHeaderH+gridHeight+3, fontSize:8 }}>P{i+1}</Text>
           ))}
         </View>
         <View style={{ marginTop: 6 }}>
