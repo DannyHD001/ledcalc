@@ -467,8 +467,15 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
             const label = meta.processorIndex === 0
               ? `P${meta.portInProcessor} (${g[0].num}-${g[g.length-1].num})`
               : `Pr2-P${meta.portInProcessor} (${g[0].num}-${g[g.length-1].num})`;
+            // For column-based directions always pin label to entry edge row
+            const labelRow = numberingDirection === 'bottom'
+              ? verticalPanels - 1
+              : numberingDirection === 'top'
+                ? 0
+                : g[0].row;
+            const labelTop = labelRow * (cellSize + gap) - 10 + pdfHeaderH;
             return (
-              <Text key={`lbl-${i}`} style={{ position:'absolute', left: g[0].col*(cellSize+gap), top: g[0].row*(cellSize+gap)-10+pdfHeaderH, fontSize:7, color }}>
+              <Text key={`lbl-${i}`} style={{ position:'absolute', left: g[0].col*(cellSize+gap), top: labelTop, fontSize:7, color }}>
                 {label}
               </Text>
             );
@@ -477,8 +484,8 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
             const splitX = processorSplitColumn * (cellSize + gap) - gap / 2;
             return (
               <>
-                <Text key="split-lbl-1" style={{ position:'absolute', left: 2, top: pdfHeaderH - 13, fontSize: 8, fontWeight: 'bold', color: '#7c3aed' }}>◀ Processor 1</Text>
-                <Text key="split-lbl-2" style={{ position:'absolute', left: splitX + 4, top: pdfHeaderH - 13, fontSize: 8, fontWeight: 'bold', color: '#7c3aed' }}>Processor 2 ▶</Text>
+                <Text key="split-lbl-1" style={{ position:'absolute', left: splitX / 2 - 20, top: pdfHeaderH + gridHeight + (processorSplitColumn !== undefined ? 24 : 12), fontSize: 8, fontWeight: 'bold', color: '#7c3aed' }}>◀ Processor 1</Text>
+                <Text key="split-lbl-2" style={{ position:'absolute', left: splitX + (gridWidth - splitX) / 2 - 20, top: pdfHeaderH + gridHeight + (processorSplitColumn !== undefined ? 24 : 12), fontSize: 8, fontWeight: 'bold', color: '#7c3aed' }}>Processor 2 ▶</Text>
               </>
             );
           })()}

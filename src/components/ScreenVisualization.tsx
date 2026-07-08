@@ -376,6 +376,24 @@ export function ScreenVisualization({
       ? processorSplitColumn * (PANEL_WIDTH + PANEL_GAP) - PANEL_GAP / 2
       : null;
 
+    // For column-based directions, always place labels at the entry edge so
+    // they don't scatter to top/bottom depending on snake reversal per column.
+    const getLabelPosition = (firstPanel: PanelNode) => {
+      switch (numberingDirection) {
+        case 'bottom':
+          // All port labels at bottom row
+          return {
+            x: firstPanel.position.x,
+            y: (verticalPanels - 1) * (PANEL_WIDTH + PANEL_GAP) + PANEL_WIDTH / 2
+          };
+        case 'top':
+          // All port labels at top row
+          return { x: firstPanel.position.x, y: PANEL_WIDTH / 2 };
+        default:
+          return firstPanel.position;
+      }
+    };
+
     const lines = portGroups.map((group, lineIndex) => {
       const { panels: linePanels, color, processorIndex, portInProcessor } = group;
       if (!linePanels.length) return null;
@@ -384,6 +402,7 @@ export function ScreenVisualization({
       const label = processorIndex === 0
         ? `P${portInProcessor} (${linePanels[0].panelNumber}-${linePanels[linePanels.length - 1].panelNumber})`
         : `Pr2-P${portInProcessor} (${linePanels[0].panelNumber}-${linePanels[linePanels.length - 1].panelNumber})`;
+      const labelPos = getLabelPosition(linePanels[0]);
       return (
         <g key={`line-${lineIndex}`}>
           <path d={pathData} stroke={color} strokeWidth="2" fill="none" opacity="0.75" />
@@ -392,8 +411,8 @@ export function ScreenVisualization({
             <circle key={`panel-${lineIndex}-${idx}`} cx={p.position.x} cy={p.position.y} r={3} fill={color} />
           ))}
           <text
-            x={linePanels[0].position.x - 44}
-            y={linePanels[0].position.y + 5}
+            x={labelPos.x - 44}
+            y={labelPos.y + 5}
             fill={color}
             fontSize={10}
             fontWeight="bold"
@@ -415,13 +434,11 @@ export function ScreenVisualization({
             <line
               x1={splitX} y1={0}
               x2={splitX} y2={totalHeight}
-              stroke="white"
+              stroke="#a855f7"
               strokeWidth={3}
               strokeDasharray="10,5"
               opacity={0.9}
             />
-            <text x={4} y={16} fill="white" fontSize={11} fontWeight="bold" opacity={0.9}>Processor 1</text>
-            <text x={splitX + 4} y={16} fill="white" fontSize={11} fontWeight="bold" opacity={0.9}>Processor 2</text>
           </g>
         )}
       </svg>
@@ -707,6 +724,20 @@ export function ScreenVisualization({
         >
           <div className="relative" style={{ marginTop: HEADER_HEIGHT }}>
             {renderHeaders()}
+            {/* Processor zone labels — rendered as HTML bar above the grid to avoid collision with SVG port labels */}
+            {processorSplitColumn !== undefined && (() => {
+              const splitX = processorSplitColumn * (PANEL_WIDTH + PANEL_GAP) - PANEL_GAP / 2;
+              return (
+                <div className="absolute flex items-stretch" style={{ top: -20, left: 0, width: totalWidth, height: 18, zIndex: 10 }}>
+                  <div className="flex items-center justify-center text-xs font-bold" style={{ width: splitX, color: '#a855f7', borderRight: '2px solid #a855f7', background: 'rgba(168,85,247,0.08)' }}>
+                    Processor 1
+                  </div>
+                  <div className="flex items-center justify-center text-xs font-bold" style={{ flex: 1, color: '#a855f7', background: 'rgba(168,85,247,0.08)' }}>
+                    Processor 2
+                  </div>
+                </div>
+              );
+            })()}
             <div 
               className="grid relative"
               style={{
