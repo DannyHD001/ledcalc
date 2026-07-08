@@ -17,6 +17,8 @@ interface ResultsProps {
   onNumberingDirectionChange: (direction: 'left' | 'right' | 'top' | 'bottom') => void;
   portStartOverrides?: {[portNumber: number]: number | undefined};
   onPortStartOverridesChange?: (overrides: {[portNumber: number]: number | undefined}) => void;
+  processorSplitColumn?: number;
+  onProcessorSplitColumnChange?: (col: number | undefined) => void;
   projectName?: string;
   projectDate?: string;
 }
@@ -31,6 +33,8 @@ export function Results({
   onNumberingDirectionChange,
   portStartOverrides = {},
   onPortStartOverridesChange,
+  processorSplitColumn,
+  onProcessorSplitColumnChange,
   projectName,
   projectDate
 }: ResultsProps) {
@@ -75,6 +79,7 @@ export function Results({
               projectDate={projectDate}
               controller={controller}
               portStartOverrides={portStartOverrides}
+              processorSplitColumn={processorSplitColumn}
             />
           }
           fileName={[
@@ -212,6 +217,64 @@ export function Results({
         </div>
       </div>
 
+      {/* Processor Split Configuration — only shown when 2+ controllers are needed */}
+      {calculations.controllers.needed >= 2 && (
+        <div className="bg-white p-6 rounded-lg shadow-sm border-l-4 border-purple-500">
+          <h3 className="text-lg font-semibold text-gray-800 mb-1">Processor Split</h3>
+          <p className="text-sm text-gray-500 mb-4">
+            This screen requires {calculations.controllers.needed} controllers. Set the column where the screen is
+            divided between Processor 1 (left) and Processor 2 (right).
+          </p>
+          <div className="flex items-end gap-4 flex-wrap">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Split after column
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={horizontalPanels - 1}
+                value={processorSplitColumn ?? Math.floor(horizontalPanels / 2)}
+                onChange={e => {
+                  const v = parseInt(e.target.value);
+                  if (!isNaN(v) && v >= 1 && v <= horizontalPanels - 1) {
+                    onProcessorSplitColumnChange?.(v);
+                  }
+                }}
+                className="w-24 px-3 py-2 text-sm border border-gray-300 rounded-md focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+              />
+              <p className="text-xs text-gray-400 mt-1">1 – {horizontalPanels - 1}</p>
+            </div>
+            {processorSplitColumn !== undefined && (
+              <div className="pb-6">
+                <div className="text-sm text-purple-700 font-medium">
+                  Processor 1: {processorSplitColumn} col × {verticalPanels} rows = {processorSplitColumn * verticalPanels} panels
+                </div>
+                <div className="text-sm text-purple-700 font-medium mt-1">
+                  Processor 2: {horizontalPanels - processorSplitColumn} col × {verticalPanels} rows = {(horizontalPanels - processorSplitColumn) * verticalPanels} panels
+                </div>
+              </div>
+            )}
+            {processorSplitColumn !== undefined && (
+              <button
+                onClick={() => onProcessorSplitColumnChange?.(undefined)}
+                className="px-3 py-2 mb-6 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Clear split
+              </button>
+            )}
+            {processorSplitColumn === undefined && (
+              <button
+                onClick={() => onProcessorSplitColumnChange?.(Math.floor(horizontalPanels / 2))}
+                className="px-3 py-2 mb-6 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700"
+              >
+                Apply default split
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="bg-white p-6 rounded-lg shadow-sm">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Screen Visualization</h3>
         <ScreenVisualization
@@ -223,6 +286,7 @@ export function Results({
           onNumberingDirectionChange={onNumberingDirectionChange}
           portStartOverrides={portStartOverrides}
           onPortStartOverridesChange={onPortStartOverridesChange}
+          processorSplitColumn={processorSplitColumn}
         />
       </div>
     </div>

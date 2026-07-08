@@ -3,6 +3,11 @@ import { Panel } from '../types/panel';
 import { Controller } from '../types/controller';
 import { Circle, Wrench, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 
+const LINE_COLOR_PALETTE = [
+  '#E6194B','#3CB44B','#0082C8','#F58230','#911EB4','#46F0F0','#F032E6','#D2F53C','#FABEBE','#008080',
+  '#E6BEFF','#AA6E28','#FFE119','#800000','#82B6E9','#9A6324','#A9A9A9','#FFFFFF','#000000'
+];
+
 interface ScreenVisualizationProps {
   panel: Panel | null;
   controller?: Controller | null;
@@ -12,6 +17,7 @@ interface ScreenVisualizationProps {
   onNumberingDirectionChange: (direction: 'left' | 'right' | 'top' | 'bottom') => void;
   portStartOverrides?: {[portNumber: number]: number | undefined};
   onPortStartOverridesChange?: (overrides: {[portNumber: number]: number | undefined}) => void;
+  processorSplitColumn?: number;
 }
 
 export function ScreenVisualization({ 
@@ -22,7 +28,8 @@ export function ScreenVisualization({
   numberingDirection,
   onNumberingDirectionChange,
   portStartOverrides = {},
-  onPortStartOverridesChange
+  onPortStartOverridesChange,
+  processorSplitColumn
 }: ScreenVisualizationProps) {
   const [showProcessorLines, setShowProcessorLines] = useState(true);
   const [zoom, setZoom] = useState(1);
@@ -204,15 +211,6 @@ export function ScreenVisualization({
 
   const lineCalc = calculateProcessorLines();
 
-  // Generate colors for processor lines
-  const generateLineColors = (count: number) => {
-    // High-contrast color-blind friendly palette (same as PDF)
-    const colors = [
-      '#E6194B','#3CB44B','#0082C8','#F58230','#911EB4','#46F0F0','#F032E6','#D2F53C','#FABEBE','#008080',
-      '#E6BEFF','#AA6E28','#FFE119','#800000','#82B6E9','#9A6324','#A9A9A9','#FFFFFF','#000000'
-    ];
-    return Array.from({ length: count }, (_, i) => colors[i % colors.length]);
-  };
 
   // Generate snake-ordered panel sequence
   const generateSnakeSequence = () => {
@@ -235,13 +233,13 @@ export function ScreenVisualization({
     return sequence.sort((a, b) => a.panelNumber - b.panelNumber);
   };
 
-  // Shared boundary helper
-  const isBoundaryPanel = (row: number, col: number) => {
+  // Zone-aware boundary helper
+  const isBoundaryForZone = (row: number, col: number, zoneLeftCol: number, zoneRightCol: number): boolean => {
     switch (numberingDirection) {
       case 'left':
-        return (row % 2 === 0 && col === horizontalPanels - 1) || (row % 2 === 1 && col === 0);
+        return (row % 2 === 0 && col === zoneRightCol) || (row % 2 === 1 && col === zoneLeftCol);
       case 'right':
-        return (row % 2 === 0 && col === 0) || (row % 2 === 1 && col === horizontalPanels - 1);
+        return (row % 2 === 0 && col === zoneLeftCol) || (row % 2 === 1 && col === zoneRightCol);
       case 'top':
         return (col % 2 === 0 && row === verticalPanels - 1) || (col % 2 === 1 && row === 0);
       case 'bottom':
@@ -253,10 +251,36 @@ export function ScreenVisualization({
 
   // Compute port groups (shared by panel coloring and SVG lines)
   type PanelNode = ReturnType<typeof generateSnakeSequence>[number];
-  const portGroups: PanelNode[][] = useMemo(() => {
+  type PortGroup = { panels: PanelNode[]; processorIndex: number; portInProcessor: number; color: string; };
+
+  const buildZoneGroups = (sequence: PanelNode[], capacity: number, leftCol: number, rightCol: number): PanelNode[][] => {
+    const result: PanelNode[][] = [];
+    let i = 0;
+    while (i < sequence.length) {
+      const start = i;
+      let lastBoundaryEnd = -1;
+      let count = 0;
+      while (i < sequence.length && count < capacity) {
+        const p = sequence[i];
+        count++;
+        if (isBoundaryForZone(p.row, p.col, leftCol, rightCol)) {
+          lastBoundaryEnd = i + 1;
+          if (count === capacity) { i++; break; }
+        }
+        i++;
+      }
+      const end = lastBoundaryEnd !== -1 ? lastBoundaryEnd : i;
+      if (end <= start) break;
+      result.push(sequence.slice(start, end));
+      i = end;
+    }
+    return result;
+  };
+
+  const portGroups: PortGroup[] = useMemo(() => {
     if (lineCalc.linesNeeded === 0) return [];
     const snakeSequence = generateSnakeSequence();
-    const groups: PanelNode[][] = [];
+    const capacity = lineCalc.panelsPerLine;
     const hasOverrides = Object.values(portStartOverrides).some(val => val !== undefined);
 
     if (hasOverrides) {
@@ -264,7 +288,7 @@ export function ScreenVisualization({
         .filter(([_, sp]) => sp !== undefined)
         .map(([portStr, sp]) => ({ port: parseInt(portStr), startPanel: sp! }))
         .sort((a, b) => a.startPanel - b.startPanel);
-
+      const rawGroups: PanelNode[][] = [];
       overrideEntries.forEach((entry, idx) => {
         const startIdx = snakeSequence.findIndex(p => p.panelNumber === entry.startPanel);
         if (startIdx === -1) return;
@@ -275,57 +299,52 @@ export function ScreenVisualization({
         } else {
           endIdx = snakeSequence.length;
         }
-        if (startIdx < endIdx) groups.push(snakeSequence.slice(startIdx, endIdx));
+        if (startIdx < endIdx) rawGroups.push(snakeSequence.slice(startIdx, endIdx));
       });
-    } else {
-      const capacity = lineCalc.panelsPerLine;
-      let i = 0;
-      while (i < snakeSequence.length && groups.length < processorConfig.maxPorts) {
-        const start = i;
-        let lastBoundaryEnd = -1;
-        let count = 0;
-        while (i < snakeSequence.length && count < capacity) {
-          const p = snakeSequence[i];
-          count++;
-          if (isBoundaryPanel(p.row, p.col)) {
-            lastBoundaryEnd = i + 1;
-            if (count === capacity) { i++; break; }
-          }
-          i++;
-        }
-        const end = lastBoundaryEnd !== -1 ? lastBoundaryEnd : i;
-        if (end <= start) break;
-        groups.push(snakeSequence.slice(start, end));
-        i = end;
-      }
+      return rawGroups.map((g, i) => ({
+        panels: g, processorIndex: 0, portInProcessor: i + 1,
+        color: LINE_COLOR_PALETTE[i % LINE_COLOR_PALETTE.length]
+      }));
     }
-    return groups;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [panel, controller, horizontalPanels, verticalPanels, numberingDirection, portStartOverrides, lineCalc.linesNeeded, lineCalc.panelsPerLine]);
 
-  // Map panelNumber → port group index
-  const panelLineMap = useMemo(() => {
-    const map = new Map<number, number>();
-    portGroups.forEach((group, idx) => group.forEach(p => map.set(p.panelNumber, idx)));
+    if (processorSplitColumn !== undefined && processorSplitColumn > 0 && processorSplitColumn < horizontalPanels) {
+      const zoneASnake = snakeSequence.filter(p => p.col < processorSplitColumn);
+      const zoneBSnake = snakeSequence.filter(p => p.col >= processorSplitColumn);
+      const zoneAGroups = buildZoneGroups(zoneASnake, capacity, 0, processorSplitColumn - 1);
+      const zoneBGroups = buildZoneGroups(zoneBSnake, capacity, processorSplitColumn, horizontalPanels - 1);
+      return [
+        ...zoneAGroups.map((g, i) => ({
+          panels: g, processorIndex: 0, portInProcessor: i + 1,
+          color: LINE_COLOR_PALETTE[i % LINE_COLOR_PALETTE.length]
+        })),
+        ...zoneBGroups.map((g, i) => ({
+          panels: g, processorIndex: 1, portInProcessor: i + 1,
+          color: LINE_COLOR_PALETTE[i % LINE_COLOR_PALETTE.length]
+        })),
+      ];
+    }
+
+    // Single zone: full screen (bug fix: no maxPorts cap so all panels are covered)
+    const rawGroups = buildZoneGroups(snakeSequence, capacity, 0, horizontalPanels - 1);
+    return rawGroups.map((g, i) => ({
+      panels: g, processorIndex: 0, portInProcessor: i + 1,
+      color: LINE_COLOR_PALETTE[i % LINE_COLOR_PALETTE.length]
+    }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panel, controller, horizontalPanels, verticalPanels, numberingDirection, portStartOverrides, lineCalc.linesNeeded, lineCalc.panelsPerLine, processorSplitColumn]);
+
+  // Map panelNumber → port color (for panel dots)
+  const panelColorMap = useMemo(() => {
+    const map = new Map<number, string>();
+    portGroups.forEach(group => group.panels.forEach(p => map.set(p.panelNumber, group.color)));
     return map;
   }, [portGroups]);
-
-  const lineColors = generateLineColors(Math.max(portGroups.length, lineCalc.linesNeeded));
-
-  // Get which line a panel belongs to (override-aware)
-  const getPanelLine = (panelNumber: number) => {
-    const mapped = panelLineMap.get(panelNumber);
-    if (mapped !== undefined) return mapped;
-    return Math.floor((panelNumber - 1) / lineCalc.panelsPerLine);
-  };
 
   // Render processor lines following snake pattern with boundary-aware grouping
   const renderProcessorLines = () => {
     if (!showProcessorLines || portGroups.length === 0) return null;
 
-    const groups = portGroups;
-
-    // Helper to build path that ends on the last panel only
+    // Helper to build path
     const buildPath = (pts: {x:number,y:number}[]) => {
       if (pts.length < 2) return '';
       return pts.reduce((acc, p, idx) => idx === 0 ? `M ${p.x} ${p.y}` : acc + ` L ${p.x} ${p.y}`, '');
@@ -336,13 +355,13 @@ export function ScreenVisualization({
       const ARROW_INTERVAL = 3; // every N panel transitions
       const arrows: React.ReactNode[] = [];
       for (let k = 1; k < linePanels.length; k++) {
-        if (k % ARROW_INTERVAL !== 0 && k !== linePanels.length - 1) continue; // place at interval and always at last segment
+        if (k % ARROW_INTERVAL !== 0 && k !== linePanels.length - 1) continue;
         const prev = linePanels[k - 1];
         const curr = linePanels[k];
         const dx = curr.position.x - prev.position.x;
         const dy = curr.position.y - prev.position.y;
         const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-        const fx = prev.position.x + dx * 0.6; // arrow placement (60% along segment)
+        const fx = prev.position.x + dx * 0.6;
         const fy = prev.position.y + dy * 0.6;
         arrows.push(
           <g key={`arrow-${curr.panelNumber}`} transform={`translate(${fx} ${fy}) rotate(${angle})`}>
@@ -353,11 +372,18 @@ export function ScreenVisualization({
       return arrows;
     };
 
-    const lines = groups.map((linePanels, lineIndex) => {
+    const splitX = processorSplitColumn !== undefined
+      ? processorSplitColumn * (PANEL_WIDTH + PANEL_GAP) - PANEL_GAP / 2
+      : null;
+
+    const lines = portGroups.map((group, lineIndex) => {
+      const { panels: linePanels, color, processorIndex, portInProcessor } = group;
       if (!linePanels.length) return null;
-      const color = lineColors[lineIndex % lineColors.length];
-      const pathPoints = linePanels.map(p => p.position); // no exit point
+      const pathPoints = linePanels.map(p => p.position);
       const pathData = buildPath(pathPoints);
+      const label = processorIndex === 0
+        ? `P${portInProcessor} (${linePanels[0].panelNumber}-${linePanels[linePanels.length - 1].panelNumber})`
+        : `Pr2-P${portInProcessor} (${linePanels[0].panelNumber}-${linePanels[linePanels.length - 1].panelNumber})`;
       return (
         <g key={`line-${lineIndex}`}>
           <path d={pathData} stroke={color} strokeWidth="2" fill="none" opacity="0.75" />
@@ -366,13 +392,13 @@ export function ScreenVisualization({
             <circle key={`panel-${lineIndex}-${idx}`} cx={p.position.x} cy={p.position.y} r={3} fill={color} />
           ))}
           <text
-            x={linePanels[0].position.x - 34}
+            x={linePanels[0].position.x - 44}
             y={linePanels[0].position.y + 5}
             fill={color}
             fontSize={10}
             fontWeight="bold"
           >
-            P{lineIndex + 1} ({linePanels[0].panelNumber}-{linePanels[linePanels.length - 1].panelNumber})
+            {label}
           </text>
         </g>
       );
@@ -384,6 +410,20 @@ export function ScreenVisualization({
         style={{ width: totalWidth, height: totalHeight }}
       >
         {lines}
+        {splitX !== null && (
+          <g>
+            <line
+              x1={splitX} y1={0}
+              x2={splitX} y2={totalHeight}
+              stroke="white"
+              strokeWidth={3}
+              strokeDasharray="10,5"
+              opacity={0.9}
+            />
+            <text x={4} y={16} fill="white" fontSize={11} fontWeight="bold" opacity={0.9}>Processor 1</text>
+            <text x={splitX + 4} y={16} fill="white" fontSize={11} fontWeight="bold" opacity={0.9}>Processor 2</text>
+          </g>
+        )}
       </svg>
     );
   };
@@ -702,7 +742,7 @@ export function ScreenVisualization({
                       <div 
                         className="absolute bottom-1 right-1 w-3 h-3 rounded-full border-2 border-white"
                         style={{ 
-                          backgroundColor: lineColors[getPanelLine(getPanelNumber(row, col))] || '#gray'
+                          backgroundColor: panelColorMap.get(getPanelNumber(row, col)) || '#666'
                         }}
                       />
                     )}
@@ -726,17 +766,37 @@ export function ScreenVisualization({
         {showProcessorLines && portGroups.length > 0 && (
           <>
             <p className="mt-2 font-medium text-gray-600">Processor Port Legend:</p>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {lineColors.slice(0, portGroups.length).map((color, index) => (
-                <div key={index} className="flex items-center gap-1">
-                  <div 
-                    className="w-3 h-3 rounded-full border border-gray-300"
-                    style={{ backgroundColor: color }}
-                  />
-                  <span className="text-xs">Port {index + 1}</span>
+            {processorSplitColumn !== undefined ? (
+              <>
+                <p className="text-xs font-medium text-gray-500 mt-1">Processor 1:</p>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {portGroups.filter(g => g.processorIndex === 0).map((g, i) => (
+                    <div key={`p1-${i}`} className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: g.color }} />
+                      <span className="text-xs">P{g.portInProcessor}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+                <p className="text-xs font-medium text-gray-500 mt-2">Processor 2:</p>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {portGroups.filter(g => g.processorIndex === 1).map((g, i) => (
+                    <div key={`p2-${i}`} className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: g.color }} />
+                      <span className="text-xs">P{g.portInProcessor}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-wrap gap-2 mt-1">
+                {portGroups.map((g, index) => (
+                  <div key={index} className="flex items-center gap-1">
+                    <div className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: g.color }} />
+                    <span className="text-xs">Port {index + 1}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>

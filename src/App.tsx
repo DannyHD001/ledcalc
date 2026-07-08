@@ -24,6 +24,7 @@ function App() {
   const [verticalPanels, setVerticalPanels] = useState(1);
   const [numberingDirection, setNumberingDirection] = useState<'left' | 'right' | 'top' | 'bottom'>('left');
   const [portStartOverrides, setPortStartOverrides] = useState<{[portNumber: number]: number | undefined}>({});
+  const [processorSplitColumn, setProcessorSplitColumn] = useState<number | undefined>(undefined);
   const [projectName, setProjectName] = useState('');
   const [projectDate, setProjectDate] = useState(() => new Date().toISOString().slice(0, 10));
   const { panels, loading, error, showErrorModal, clearError, savePanel, removePanel, refreshPanels } = useDatabase();
@@ -192,6 +193,7 @@ function App() {
                 onNumberingDirectionChange={setNumberingDirection}
                 portStartOverrides={portStartOverrides}
                 onPortStartOverridesChange={setPortStartOverrides}
+                processorSplitColumn={processorSplitColumn}
               />
             ) : (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
@@ -223,6 +225,8 @@ function App() {
                 onNumberingDirectionChange={setNumberingDirection}
                 portStartOverrides={portStartOverrides}
                 onPortStartOverridesChange={setPortStartOverrides}
+                processorSplitColumn={processorSplitColumn}
+                onProcessorSplitColumnChange={setProcessorSplitColumn}
                 projectName={projectName}
                 projectDate={projectDate}
               />

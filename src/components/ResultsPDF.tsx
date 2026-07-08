@@ -75,9 +75,10 @@ interface ResultsPDFProps {
   projectDate?: string;
   controller?: Controller | null;
   portStartOverrides?: {[portNumber: number]: number | undefined};
+  processorSplitColumn?: number;
 }
 
-export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPanels, logo, numberingDirection = 'left', projectName, projectDate, controller, portStartOverrides = {} }: ResultsPDFProps) {
+export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPanels, logo, numberingDirection = 'left', projectName, projectDate, controller, portStartOverrides = {}, processorSplitColumn }: ResultsPDFProps) {
   // Debug: Log logo prop
   console.log('ResultsPDF - Logo prop:', logo);
   // --- Visualization helpers (simplified mirror of on-screen logic) ---
@@ -141,17 +142,39 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
     }
   }
   snake.sort((a,b)=>a.num-b.num);
-  const isBoundary = (row:number,col:number) => {
+  const groups: PanelNode[][] = [];
+  const hasOverrides = Object.values(portStartOverrides).some(val => val !== undefined);
+
+  // Zone-aware boundary helper
+  const isBoundary = (row:number, col:number, zoneLeftCol: number, zoneRightCol: number) => {
     switch (numberingDirection) {
-      case 'left': return (row % 2 === 0 && col === horizontalPanels - 1) || (row % 2 === 1 && col === 0);
-      case 'right': return (row % 2 === 0 && col === 0) || (row % 2 === 1 && col === horizontalPanels - 1);
+      case 'left': return (row % 2 === 0 && col === zoneRightCol) || (row % 2 === 1 && col === zoneLeftCol);
+      case 'right': return (row % 2 === 0 && col === zoneLeftCol) || (row % 2 === 1 && col === zoneRightCol);
       case 'top': return (col % 2 === 0 && row === verticalPanels - 1) || (col % 2 === 1 && row === 0);
       case 'bottom': return (col % 2 === 0 && row === 0) || (col % 2 === 1 && row === verticalPanels - 1);
       default: return false;
     }
   };
-  const groups: PanelNode[][] = [];
-  const hasOverrides = Object.values(portStartOverrides).some(val => val !== undefined);
+
+  const buildZoneGroups = (sequence: PanelNode[], capacity: number, leftCol: number, rightCol: number): PanelNode[][] => {
+    const result: PanelNode[][] = [];
+    let i = 0;
+    while (i < sequence.length) {
+      const start = i; let lastBoundaryEnd = -1; let count = 0;
+      while (i < sequence.length && count < capacity) {
+        const p = sequence[i]; count++;
+        if (isBoundary(p.row, p.col, leftCol, rightCol)) { lastBoundaryEnd = i + 1; if (count === capacity) { i++; break; } }
+        i++;
+      }
+      const end = lastBoundaryEnd !== -1 ? lastBoundaryEnd : i; if (end <= start) break;
+      result.push(sequence.slice(start, end)); i = end;
+    }
+    return result;
+  };
+
+  // processorIndex per group (0 = Processor 1, 1 = Processor 2) and port label within processor
+  const groupMeta: { processorIndex: number; portInProcessor: number }[] = [];
+
   if (hasOverrides) {
     const overrideEntries = Object.entries(portStartOverrides)
       .filter(([_, sp]) => sp !== undefined)
@@ -169,17 +192,20 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
       }
       if (startIdx < endIdx) groups.push(snake.slice(startIdx, endIdx));
     });
+    groups.forEach((_, i) => groupMeta.push({ processorIndex: 0, portInProcessor: i + 1 }));
+  } else if (processorSplitColumn !== undefined && processorSplitColumn > 0 && processorSplitColumn < horizontalPanels) {
+    const zoneASnake = snake.filter(p => p.col < processorSplitColumn);
+    const zoneBSnake = snake.filter(p => p.col >= processorSplitColumn);
+    const zoneAGroups = buildZoneGroups(zoneASnake, panelsPerLine, 0, processorSplitColumn - 1);
+    const zoneBGroups = buildZoneGroups(zoneBSnake, panelsPerLine, processorSplitColumn, horizontalPanels - 1);
+    zoneAGroups.forEach(g => groups.push(g));
+    zoneBGroups.forEach(g => groups.push(g));
+    zoneAGroups.forEach((_, i) => groupMeta.push({ processorIndex: 0, portInProcessor: i + 1 }));
+    zoneBGroups.forEach((_, i) => groupMeta.push({ processorIndex: 1, portInProcessor: i + 1 }));
   } else {
-    let i = 0; const capacity = panelsPerLine; const maxPorts = maxPortsFromController;
-    while (i < snake.length && groups.length < maxPorts) {
-      const start = i; let lastBoundaryEnd = -1; let count = 0;
-      while (i < snake.length && count < capacity) {
-        const p = snake[i]; count++; if (isBoundary(p.row,p.col)) { lastBoundaryEnd = i+1; if (count===capacity) { i++; break; } }
-        i++;
-      }
-      const end = lastBoundaryEnd !== -1 ? lastBoundaryEnd : i; if (end <= start) break;
-      groups.push(snake.slice(start,end)); i = end;
-    }
+    const rawGroups = buildZoneGroups(snake, panelsPerLine, 0, horizontalPanels - 1);
+    rawGroups.forEach(g => groups.push(g));
+    groups.forEach((_, i) => groupMeta.push({ processorIndex: 0, portInProcessor: i + 1 }));
   }
   // Build path string for group
   const buildPath = (g: PanelNode[]) => g.reduce((acc,p,idx)=> idx===0 ? `M ${p.x} ${p.y}` : acc+` L ${p.x} ${p.y}`,'');
@@ -321,6 +347,18 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
               <Text style={styles.value}>{calculations.controllers.totalPorts}</Text>
             </View>
           </View>
+          {processorSplitColumn !== undefined && (
+            <View style={styles.row}>
+              <View style={styles.column}>
+                <Text style={styles.label}>Processor 1 Columns</Text>
+                <Text style={styles.value}>{processorSplitColumn} col × {verticalPanels} rows ({processorSplitColumn * verticalPanels} panels)</Text>
+              </View>
+              <View style={styles.column}>
+                <Text style={styles.label}>Processor 2 Columns</Text>
+                <Text style={styles.value}>{horizontalPanels - processorSplitColumn} col × {verticalPanels} rows ({(horizontalPanels - processorSplitColumn) * verticalPanels} panels)</Text>
+              </View>
+            </View>
+          )}
           <View style={styles.row}>
             <View style={styles.column}>
               <Text style={styles.label}>Power Lines Required</Text>
@@ -376,7 +414,8 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
             })}
             {/* Data lines on top */}
             {groups.map((g,gi)=> {
-              const color = lineColors[gi % lineColors.length];
+              const meta = groupMeta[gi] || { processorIndex: 0, portInProcessor: gi + 1 };
+              const color = lineColors[( meta.portInProcessor - 1) % lineColors.length];
               return (
                 <React.Fragment key={`grp-${gi}`}>
                   <Path d={buildPath(g)} stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" fill="none" />
@@ -384,10 +423,22 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
                 </React.Fragment>
               );
             })}
+            {/* Processor split line */}
+            {processorSplitColumn !== undefined && (() => {
+              const splitX = processorSplitColumn * (cellSize + gap) - gap / 2;
+              return (
+                <React.Fragment key="split-line">
+                  <Path d={`M ${splitX} ${pdfHeaderH} L ${splitX} ${pdfHeaderH + gridHeight}`} stroke="white" strokeWidth={2.5} strokeDasharray="8 4" />
+                </React.Fragment>
+              );
+            })()}
             {/* Legend color boxes */}
-            {groups.map((_,i)=> (
-              <Rect key={`leg-${i}`} x={i*50} y={pdfHeaderH+gridHeight+4} width={10} height={10} fill={lineColors[i % lineColors.length]} />
-            ))}
+            {groups.map((_,i)=> {
+              const meta = groupMeta[i] || { processorIndex: 0, portInProcessor: i + 1 };
+              return (
+                <Rect key={`leg-${i}`} x={i*55} y={pdfHeaderH+gridHeight+4} width={10} height={10} fill={lineColors[(meta.portInProcessor - 1) % lineColors.length]} />
+              );
+            })}
           </Svg>
           {/* Text overlays for panel numbers & labels */}
           {snake.map(p=> {
@@ -399,14 +450,34 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
               </Text>
             );
           })}
-          {groups.map((g,i)=> (
-            <Text key={`lbl-${i}`} style={{ position:'absolute', left: g[0].col*(cellSize+gap), top: g[0].row*(cellSize+gap)-10+pdfHeaderH, fontSize:8, color: lineColors[i % lineColors.length] }}>
-              P{i+1} ({g[0].num}-{g[g.length-1].num})
-            </Text>
-          ))}
-          {groups.map((_,i)=> (
-            <Text key={`leglbl-${i}`} style={{ position:'absolute', left: i*50+14, top: pdfHeaderH+gridHeight+3, fontSize:8 }}>P{i+1}</Text>
-          ))}
+          {groups.map((g,i)=> {
+            const meta = groupMeta[i] || { processorIndex: 0, portInProcessor: i + 1 };
+            const color = lineColors[(meta.portInProcessor - 1) % lineColors.length];
+            const label = meta.processorIndex === 0
+              ? `P${meta.portInProcessor} (${g[0].num}-${g[g.length-1].num})`
+              : `Pr2-P${meta.portInProcessor} (${g[0].num}-${g[g.length-1].num})`;
+            return (
+              <Text key={`lbl-${i}`} style={{ position:'absolute', left: g[0].col*(cellSize+gap), top: g[0].row*(cellSize+gap)-10+pdfHeaderH, fontSize:7, color }}>
+                {label}
+              </Text>
+            );
+          })}
+          {processorSplitColumn !== undefined && (() => {
+            const splitX = processorSplitColumn * (cellSize + gap) - gap / 2;
+            return (
+              <>
+                <Text key="split-lbl-1" style={{ position:'absolute', left: 2, top: pdfHeaderH - 12, fontSize: 8, color: '#ffffff' }}>Processor 1</Text>
+                <Text key="split-lbl-2" style={{ position:'absolute', left: splitX + 2, top: pdfHeaderH - 12, fontSize: 8, color: '#ffffff' }}>Processor 2</Text>
+              </>
+            );
+          })()}
+          {groups.map((_,i)=> {
+            const meta = groupMeta[i] || { processorIndex: 0, portInProcessor: i + 1 };
+            const label = meta.processorIndex === 0 ? `P${meta.portInProcessor}` : `Pr2-P${meta.portInProcessor}`;
+            return (
+              <Text key={`leglbl-${i}`} style={{ position:'absolute', left: i*55+14, top: pdfHeaderH+gridHeight+3, fontSize:8 }}>{label}</Text>
+            );
+          })}
         </View>
         <View style={{ marginTop: 6 }}>
           <Text style={{ fontSize: 9 }}>Lines show port grouping (snake order). Arrows indicate direction. Colored square = port color.</Text>
