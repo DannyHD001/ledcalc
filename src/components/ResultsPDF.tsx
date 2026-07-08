@@ -305,6 +305,12 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
               <Text style={styles.value}>{horizontalPanels} × {verticalPanels} panels</Text>
             </View>
             <View style={styles.column}>
+              <Text style={styles.label}>Total Panels</Text>
+              <Text style={styles.value}>{horizontalPanels * verticalPanels}</Text>
+            </View>
+          </View>
+          <View style={styles.row}>
+            <View style={styles.column}>
               <Text style={styles.label}>Total Size</Text>
               <Text style={styles.value}>
                 {calculations.dimensions.width.toFixed(2)}m × {calculations.dimensions.height.toFixed(2)}m
@@ -400,8 +406,8 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
       <Page size="A4" orientation="landscape" style={styles.page}>
         <Text style={styles.title}>Screen Visualization</Text>
         <Text style={{ fontSize: 10, marginBottom: 6 }}>Numbering Direction: {numberingDirection.toUpperCase()}</Text>
-        <View style={{ position:'relative', width: gridWidth, height: pdfHeaderH + gridHeight + 24 }}>
-          <Svg width={gridWidth} height={pdfHeaderH + gridHeight + 24}>
+        <View style={{ position:'relative', width: gridWidth, height: pdfHeaderH + gridHeight + (processorSplitColumn !== undefined ? 36 : 24) }}>
+          <Svg width={gridWidth} height={pdfHeaderH + gridHeight + (processorSplitColumn !== undefined ? 36 : 24)}>
             {/* Rigging headers */}
             {pdfRiggingHeaders}
             {/* Panels first so lines drawn later appear above */}
@@ -428,15 +434,20 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
               const splitX = processorSplitColumn * (cellSize + gap) - gap / 2;
               return (
                 <React.Fragment key="split-line">
-                  <Path d={`M ${splitX} ${pdfHeaderH} L ${splitX} ${pdfHeaderH + gridHeight}`} stroke="white" strokeWidth={2.5} strokeDasharray="8 4" />
+                  <Rect x={splitX - 1} y={0} width={3} height={pdfHeaderH + gridHeight} fill="#7c3aed" />
                 </React.Fragment>
               );
             })()}
             {/* Legend color boxes */}
             {groups.map((_,i)=> {
               const meta = groupMeta[i] || { processorIndex: 0, portInProcessor: i + 1 };
+              const isSplit = processorSplitColumn !== undefined;
+              const xPos = isSplit ? 56 + (meta.portInProcessor - 1) * 40 : i * 55;
+              const yPos = isSplit && meta.processorIndex === 1
+                ? pdfHeaderH + gridHeight + 14
+                : pdfHeaderH + gridHeight + 4;
               return (
-                <Rect key={`leg-${i}`} x={i*55} y={pdfHeaderH+gridHeight+4} width={10} height={10} fill={lineColors[(meta.portInProcessor - 1) % lineColors.length]} />
+                <Rect key={`leg-${i}`} x={xPos} y={yPos} width={10} height={10} fill={lineColors[(meta.portInProcessor - 1) % lineColors.length]} />
               );
             })}
           </Svg>
@@ -466,16 +477,27 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
             const splitX = processorSplitColumn * (cellSize + gap) - gap / 2;
             return (
               <>
-                <Text key="split-lbl-1" style={{ position:'absolute', left: 2, top: pdfHeaderH - 12, fontSize: 8, color: '#ffffff' }}>Processor 1</Text>
-                <Text key="split-lbl-2" style={{ position:'absolute', left: splitX + 2, top: pdfHeaderH - 12, fontSize: 8, color: '#ffffff' }}>Processor 2</Text>
+                <Text key="split-lbl-1" style={{ position:'absolute', left: 2, top: pdfHeaderH - 13, fontSize: 8, fontWeight: 'bold', color: '#7c3aed' }}>◀ Processor 1</Text>
+                <Text key="split-lbl-2" style={{ position:'absolute', left: splitX + 4, top: pdfHeaderH - 13, fontSize: 8, fontWeight: 'bold', color: '#7c3aed' }}>Processor 2 ▶</Text>
               </>
             );
           })()}
+          {/* Legend labels */}
+          {processorSplitColumn !== undefined && (
+            <>
+              <Text style={{ position:'absolute', left: 0, top: pdfHeaderH+gridHeight+3, fontSize: 7, fontWeight: 'bold', color: '#7c3aed' }}>Pr1:</Text>
+              <Text style={{ position:'absolute', left: 0, top: pdfHeaderH+gridHeight+15, fontSize: 7, fontWeight: 'bold', color: '#7c3aed' }}>Pr2:</Text>
+            </>
+          )}
           {groups.map((_,i)=> {
             const meta = groupMeta[i] || { processorIndex: 0, portInProcessor: i + 1 };
-            const label = meta.processorIndex === 0 ? `P${meta.portInProcessor}` : `Pr2-P${meta.portInProcessor}`;
+            const isSplit = processorSplitColumn !== undefined;
+            const xPos = isSplit ? 70 + (meta.portInProcessor - 1) * 40 : i * 55 + 14;
+            const yPos = isSplit && meta.processorIndex === 1
+              ? pdfHeaderH + gridHeight + 15
+              : pdfHeaderH + gridHeight + 3;
             return (
-              <Text key={`leglbl-${i}`} style={{ position:'absolute', left: i*55+14, top: pdfHeaderH+gridHeight+3, fontSize:8 }}>{label}</Text>
+              <Text key={`leglbl-${i}`} style={{ position:'absolute', left: xPos, top: yPos, fontSize: 7 }}>P{meta.portInProcessor}</Text>
             );
           })}
         </View>
