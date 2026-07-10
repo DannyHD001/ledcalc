@@ -826,6 +826,25 @@ export function ScreenVisualization({
         </div>
       </div>
 
+      {/* Power line draw mode info bar — shown above the grid, not inside the scaled SVG */}
+      {powerLineMode && (
+        <div className="flex items-center gap-3 px-4 py-2 rounded-lg mb-2" style={{ background: '#1e293b', border: '2px solid #facc15' }}>
+          <Zap className="w-4 h-4" style={{ color: '#facc15', flexShrink: 0 }} />
+          {activePath.length === 0 ? (
+            <span className="text-sm font-semibold" style={{ color: '#facc15' }}>Click a panel to start a power line</span>
+          ) : (
+            <>
+              <span className="text-sm font-bold" style={{ color: '#facc15' }}>Drawing Line {powerLines.length + 1}</span>
+              <span className="text-sm" style={{ color: '#94a3b8' }}>·</span>
+              <span className="text-base font-bold" style={{ color: '#ffffff' }}>{activePath.length} panel{activePath.length === 1 ? '' : 's'}</span>
+              <span className="text-sm" style={{ color: '#94a3b8' }}>·</span>
+              <span className="text-sm" style={{ color: '#94a3b8' }}>From panel <strong style={{ color: '#facc15' }}>{activePath[0]}</strong> → current <strong style={{ color: '#ef4444' }}>{activePath[activePath.length - 1]}</strong></span>
+              <span className="text-sm ml-auto" style={{ color: '#64748b' }}>Release on target panel to commit</span>
+            </>
+          )}
+        </div>
+      )}
+
       <div 
         className="w-full relative overflow-auto" 
         ref={containerRef} 
@@ -945,9 +964,6 @@ export function ScreenVisualization({
                 {activePath.length >= 1 && (() => {
                   const pts = activePath.map(n => powerLinePosMap.get(n)).filter((p): p is {x:number;y:number} => !!p);
                   const nextLabel = String(powerLines.length + 1);
-                  const last = pts[pts.length - 1];
-                  const infoText = `Line ${nextLabel}  ·  ${activePath.length} panel${activePath.length === 1 ? '' : 's'}`;
-                  const infoW = infoText.length * 5.6 + 12;
                   return (
                     <g>
                       {pts.length >= 2 && (() => {
@@ -964,12 +980,6 @@ export function ScreenVisualization({
                           </>
                         );
                       })()}
-                      {last && (
-                        <>
-                          <rect x={last.x - infoW / 2} y={last.y - PANEL_WIDTH / 2 - 23} width={infoW} height={16} rx={4} fill="#1e293b" opacity={0.92} />
-                          <text x={last.x} y={last.y - PANEL_WIDTH / 2 - 15} textAnchor="middle" dominantBaseline="central" fontSize={9} fontWeight="bold" fill="#facc15">{infoText}</text>
-                        </>
-                      )}
                     </g>
                   );
                 })()}

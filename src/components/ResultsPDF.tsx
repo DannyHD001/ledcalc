@@ -76,7 +76,7 @@ interface ResultsPDFProps {
   controller?: Controller | null;
   portStartOverrides?: {[portNumber: number]: number | undefined};
   processorSplitColumn?: number;
-  powerLines?: Array<{from: number; to: number}>;
+  powerLines?: Array<{panels: number[]}>;
 }
 
 export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPanels, logo, numberingDirection = 'left', projectName, projectDate, controller, portStartOverrides = {}, processorSplitColumn, powerLines = [] }: ResultsPDFProps) {
@@ -266,6 +266,27 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
       }
     }
   }
+
+  // Power line circuit grouping (union-find) — lines sharing a panel get the same circuit number
+  const plParent: Record<number, number> = {};
+  const plFind = (x: number): number => {
+    if (plParent[x] === undefined) plParent[x] = x;
+    if (plParent[x] === x) return x;
+    plParent[x] = plFind(plParent[x]); return plParent[x];
+  };
+  for (const pl of powerLines) {
+    for (let i = 1; i < pl.panels.length; i++) {
+      const ra = plFind(pl.panels[0]), rb = plFind(pl.panels[i]);
+      if (ra !== rb) plParent[ra] = rb;
+    }
+  }
+  const plRootToGroup: Record<number, number> = {};
+  let plNextGroup = 1;
+  const plGroupMap = powerLines.map(pl => {
+    const root = plFind(pl.panels[0]);
+    if (!plRootToGroup[root]) plRootToGroup[root] = plNextGroup++;
+    return plRootToGroup[root];
+  });
 
   return (
     <Document>
