@@ -1,5 +1,5 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, Image, Svg, Rect, Path } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, Image, Svg, Rect, Path, Circle, G, Tspan } from '@react-pdf/renderer';
 import { Panel } from '../types/panel';
 import { Controller } from '../types/controller';
 
@@ -450,10 +450,14 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
               const ay = aEntry.row * (cellSize + gap) + pdfHeaderH + cellSize / 2;
               const bx = bEntry.col * (cellSize + gap) + cellSize / 2;
               const by = bEntry.row * (cellSize + gap) + pdfHeaderH + cellSize / 2;
+              const mx = (ax + bx) / 2;
+              const my = (ay + by) / 2;
               return (
                 <React.Fragment key={`pwrline-${i}`}>
                   <Path d={`M ${ax} ${ay} L ${bx} ${by}`} stroke="#facc15" strokeWidth={4} strokeLinecap="round" fill="none" />
                   <Path d={`M ${ax} ${ay} L ${bx} ${by}`} stroke="#dc2626" strokeWidth={2} strokeLinecap="round" fill="none" />
+                  <Circle cx={mx} cy={my} r={5} fill="#1e293b" stroke="#facc15" strokeWidth={1.5} />
+                  <Text style={{ position:'absolute', left: mx - 4, top: my - 4, fontSize: 5, fontWeight: 'bold', color: '#facc15', width: 8, textAlign: 'center' }}>{String(i + 1)}</Text>
                 </React.Fragment>
               );
             })}

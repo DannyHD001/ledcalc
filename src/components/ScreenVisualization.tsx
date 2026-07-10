@@ -882,22 +882,33 @@ export function ScreenVisualization({
                   const a = panelPositionMap.get(pl.from);
                   const b = panelPositionMap.get(pl.to);
                   if (!a || !b) return null;
+                  const mx = (a.x + b.x) / 2;
+                  const my = (a.y + b.y) / 2;
+                  const label = String(i + 1);
                   return (
                     <g key={`pl-${i}`}>
                       <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#facc15" strokeWidth={6} strokeLinecap="round" />
                       <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#dc2626" strokeWidth={3} strokeLinecap="round" />
+                      {/* Number badge at midpoint */}
+                      <circle cx={mx} cy={my} r={9} fill="#1e293b" stroke="#facc15" strokeWidth={2} />
+                      <text x={mx} y={my} textAnchor="middle" dominantBaseline="central" fontSize={9} fontWeight="bold" fill="#facc15">{label}</text>
                     </g>
                   );
                 })}
-                {/* Preview line while dragging */}
+                {/* Preview line while dragging — shows next number */}
                 {draggingFrom !== null && draggingTo !== null && draggingTo !== draggingFrom && (() => {
                   const a = panelPositionMap.get(draggingFrom);
                   const b = panelPositionMap.get(draggingTo);
                   if (!a || !b) return null;
+                  const mx = (a.x + b.x) / 2;
+                  const my = (a.y + b.y) / 2;
+                  const nextLabel = String(powerLines.length + 1);
                   return (
                     <g>
                       <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#facc15" strokeWidth={6} strokeLinecap="round" strokeDasharray="8 4" opacity={0.7} />
                       <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#dc2626" strokeWidth={3} strokeLinecap="round" strokeDasharray="8 4" opacity={0.7} />
+                      <circle cx={mx} cy={my} r={9} fill="#1e293b" stroke="#facc15" strokeWidth={2} opacity={0.7} />
+                      <text x={mx} y={my} textAnchor="middle" dominantBaseline="central" fontSize={9} fontWeight="bold" fill="#facc15" opacity={0.7}>{nextLabel}</text>
                     </g>
                   );
                 })()}
