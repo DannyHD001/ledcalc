@@ -870,8 +870,8 @@ export function ScreenVisualization({
                 })
               )}
             </div>
-            {/* Processor lines overlay */}
-            <div style={{ width: totalWidth, height: totalHeight, position: 'relative' }}>
+            {/* Processor lines overlay — absolutely positioned over the panel grid */}
+            <div style={{ position: 'absolute', top: 0, left: 0, width: totalWidth, height: totalHeight, pointerEvents: 'none' }}>
               {renderProcessorLines()}
               {/* Power lines overlay */}
               <svg
