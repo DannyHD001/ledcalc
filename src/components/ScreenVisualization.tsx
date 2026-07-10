@@ -161,23 +161,11 @@ export function ScreenVisualization({
           return row * horizontalPanels + col + 1;
         }
       case 'top':
-        // Snake pattern starting top to bottom, column by column
-        if (col % 2 === 0) {
-          // Even columns: top to bottom
-          return col * verticalPanels + row + 1;
-        } else {
-          // Odd columns: bottom to top
-          return (col + 1) * verticalPanels - row;
-        }
+        // All columns: top to bottom (no reversal)
+        return col * verticalPanels + row + 1;
       case 'bottom':
-        // Snake pattern starting bottom to top, column by column
-        if (col % 2 === 0) {
-          // Even columns: bottom to top
-          return (col + 1) * verticalPanels - row;
-        } else {
-          // Odd columns: top to bottom
-          return col * verticalPanels + row + 1;
-        }
+        // All columns: bottom to top (no reversal)
+        return col * verticalPanels + (verticalPanels - row);
       default:
         return row * horizontalPanels + col + 1;
     }
@@ -241,9 +229,11 @@ export function ScreenVisualization({
       case 'right':
         return (row % 2 === 0 && col === zoneLeftCol) || (row % 2 === 1 && col === zoneRightCol);
       case 'top':
-        return (col % 2 === 0 && row === verticalPanels - 1) || (col % 2 === 1 && row === 0);
+        // Non-reversing: every column ends at the bottom
+        return row === verticalPanels - 1;
       case 'bottom':
-        return (col % 2 === 0 && row === 0) || (col % 2 === 1 && row === verticalPanels - 1);
+        // Non-reversing: every column ends at the top
+        return row === 0;
       default:
         return false;
     }

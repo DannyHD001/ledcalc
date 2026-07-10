@@ -89,9 +89,11 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
       case 'right':
         return row % 2 === 0 ? row * horizontalPanels + (horizontalPanels - col) : row * horizontalPanels + col + 1;
       case 'top':
-        return col % 2 === 0 ? col * verticalPanels + row + 1 : (col + 1) * verticalPanels - row;
+        // All columns: top to bottom (no reversal)
+        return col * verticalPanels + row + 1;
       case 'bottom':
-        return col % 2 === 0 ? (col + 1) * verticalPanels - row : col * verticalPanels + row + 1;
+        // All columns: bottom to top (no reversal)
+        return col * verticalPanels + (verticalPanels - row);
       default:
         return row * horizontalPanels + col + 1;
     }
@@ -150,8 +152,8 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
     switch (numberingDirection) {
       case 'left': return (row % 2 === 0 && col === zoneRightCol) || (row % 2 === 1 && col === zoneLeftCol);
       case 'right': return (row % 2 === 0 && col === zoneLeftCol) || (row % 2 === 1 && col === zoneRightCol);
-      case 'top': return (col % 2 === 0 && row === verticalPanels - 1) || (col % 2 === 1 && row === 0);
-      case 'bottom': return (col % 2 === 0 && row === 0) || (col % 2 === 1 && row === verticalPanels - 1);
+      case 'top': return row === verticalPanels - 1; // non-reversing: every col ends at bottom
+      case 'bottom': return row === 0;               // non-reversing: every col ends at top
       default: return false;
     }
   };
