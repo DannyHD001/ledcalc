@@ -9,8 +9,7 @@ const LINE_COLOR_PALETTE = [
 ];
 
 export interface PowerLine {
-  from: number; // panel number
-  to: number;   // panel number
+  panels: number[]; // ordered panel numbers forming the path
 }
 
 interface ScreenVisualizationProps {
@@ -44,8 +43,7 @@ export function ScreenVisualization({
   const [zoom, setZoom] = useState(1);
   const [showPortOverrides, setShowPortOverrides] = useState(false);
   const [powerLineMode, setPowerLineMode] = useState(false);
-  const [draggingFrom, setDraggingFrom] = useState<number | null>(null);
-  const [draggingTo, setDraggingTo] = useState<number | null>(null);
+  const [activePath, setActivePath] = useState<number[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   
   // Get processor configuration - using controller data if available, otherwise defaults
@@ -482,34 +480,66 @@ export function ScreenVisualization({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [horizontalPanels, verticalPanels, numberingDirection]);
 
-  // Cancel drag when mouse released outside a panel
+  // Compute connected circuit numbers via union-find
+  const powerLineGroupMap = useMemo(() => {
+    const map = new Map<number, number>();
+    if (powerLines.length === 0) return map;
+    const parent = new Map<number, number>();
+    const find = (x: number): number => {
+      if (!parent.has(x)) parent.set(x, x);
+      const p = parent.get(x)!;
+      if (p === x) return x;
+      const root = find(p); parent.set(x, root); return root;
+    };
+    const union = (a: number, b: number) => {
+      const ra = find(a), rb = find(b);
+      if (ra !== rb) parent.set(ra, rb);
+    };
+    for (const pl of powerLines) {
+      for (let i = 0; i < pl.panels.length - 1; i++) union(pl.panels[i], pl.panels[i + 1]);
+    }
+    const rootToGroup = new Map<number, number>();
+    let nextGroup = 1;
+    powerLines.forEach((pl, idx) => {
+      const root = find(pl.panels[0]);
+      if (!rootToGroup.has(root)) rootToGroup.set(root, nextGroup++);
+      map.set(idx, rootToGroup.get(root)!);
+    });
+    return map;
+  }, [powerLines]);
+
+  // Cancel draw when mouse released outside a panel
   useEffect(() => {
     if (!powerLineMode) return;
-    const cancel = () => { setDraggingFrom(null); setDraggingTo(null); };
+    const cancel = () => setActivePath([]);
     window.addEventListener('mouseup', cancel);
     return () => window.removeEventListener('mouseup', cancel);
   }, [powerLineMode]);
 
   const handlePanelMouseDown = useCallback((panelNum: number) => {
     if (!powerLineMode) return;
-    setDraggingFrom(panelNum);
-    setDraggingTo(null);
+    setActivePath([panelNum]);
   }, [powerLineMode]);
 
   const handlePanelMouseEnter = useCallback((panelNum: number) => {
-    if (!powerLineMode || draggingFrom === null) return;
-    setDraggingTo(panelNum);
-  }, [powerLineMode, draggingFrom]);
+    if (!powerLineMode || activePath.length === 0) return;
+    if (activePath[activePath.length - 1] === panelNum) return;
+    if (!activePath.includes(panelNum)) {
+      setActivePath(prev => [...prev, panelNum]);
+    }
+  }, [powerLineMode, activePath]);
 
   const handlePanelMouseUp = useCallback((panelNum: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!powerLineMode || draggingFrom === null) return;
-    if (panelNum !== draggingFrom) {
-      onPowerLinesChange?.([...powerLines, { from: draggingFrom, to: panelNum }]);
+    if (!powerLineMode || activePath.length === 0) return;
+    const finalPath = !activePath.includes(panelNum) && activePath[activePath.length - 1] !== panelNum
+      ? [...activePath, panelNum]
+      : activePath;
+    if (finalPath.length >= 2) {
+      onPowerLinesChange?.([...powerLines, { panels: finalPath }]);
     }
-    setDraggingFrom(null);
-    setDraggingTo(null);
-  }, [powerLineMode, draggingFrom, powerLines, onPowerLinesChange]);
+    setActivePath([]);
+  }, [powerLineMode, activePath, powerLines, onPowerLinesChange]);
 
   // Calculate extra space needed for exit lines
   const getExtraSpace = () => ({ width: 0, height: 0 });
@@ -843,8 +873,8 @@ export function ScreenVisualization({
               {Array.from({ length: verticalPanels }).map((_, row) =>
                 Array.from({ length: horizontalPanels }).map((_, col) => {
                   const panelNum = getPanelNumber(row, col);
-                  const isDrawSource = powerLineMode && draggingFrom === panelNum;
-                  const isDrawHover = powerLineMode && draggingFrom !== null && draggingTo === panelNum && panelNum !== draggingFrom;
+                  const isDrawSource = powerLineMode && activePath[0] === panelNum;
+                  const isInActivePath = powerLineMode && activePath.includes(panelNum) && activePath[0] !== panelNum;
                   return (
                   <div
                     key={`${row}-${col}`}
@@ -854,10 +884,10 @@ export function ScreenVisualization({
                       height: PANEL_WIDTH,
                       boxShadow: isDrawSource
                         ? 'inset 0 0 0 3px #facc15'
-                        : isDrawHover
-                        ? 'inset 0 0 0 3px #dc2626'
+                        : isInActivePath
+                        ? 'inset 0 0 0 2px #dc2626'
                         : 'inset 0 0 0 1px rgba(255,255,255,0.1)',
-                      cursor: powerLineMode ? (draggingFrom ? 'crosshair' : 'cell') : 'default',
+                      cursor: powerLineMode ? (activePath.length > 0 ? 'crosshair' : 'cell') : 'default',
                       userSelect: 'none'
                     }}
                     onMouseDown={() => handlePanelMouseDown(panelNum)}
@@ -895,45 +925,51 @@ export function ScreenVisualization({
                 style={{ width: totalWidth, height: totalHeight }}
               >
                 {powerLines.map((pl, i) => {
-                  const a = powerLinePosMap.get(pl.from);
-                  const b = powerLinePosMap.get(pl.to);
-                  if (!a || !b) return null;
-                  const mx = (a.x + b.x) / 2;
-                  const my = (a.y + b.y) / 2;
-                  const label = String(i + 1);
+                  const pts = pl.panels.map(n => powerLinePosMap.get(n)).filter((p): p is {x:number;y:number} => !!p);
+                  if (pts.length < 2) return null;
+                  const pathD = pts.map((p, j) => `${j === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+                  const groupNum = powerLineGroupMap.get(i) ?? (i + 1);
+                  const midIdx = Math.floor((pts.length - 1) / 2);
+                  const mx = (pts[midIdx].x + pts[midIdx + 1].x) / 2;
+                  const my = (pts[midIdx].y + pts[midIdx + 1].y) / 2;
                   return (
                     <g key={`pl-${i}`}>
-                      <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#facc15" strokeWidth={6} strokeLinecap="round" />
-                      <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#dc2626" strokeWidth={3} strokeLinecap="round" />
-                      {/* Number badge at midpoint */}
+                      <path d={pathD} stroke="#facc15" strokeWidth={6} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                      <path d={pathD} stroke="#dc2626" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" fill="none" />
                       <circle cx={mx} cy={my} r={9} fill="#1e293b" stroke="#facc15" strokeWidth={2} />
-                      <text x={mx} y={my} textAnchor="middle" dominantBaseline="central" fontSize={9} fontWeight="bold" fill="#facc15">{label}</text>
+                      <text x={mx} y={my} textAnchor="middle" dominantBaseline="central" fontSize={9} fontWeight="bold" fill="#facc15">{String(groupNum)}</text>
                     </g>
                   );
                 })}
-                {/* Preview line while dragging — shows next number + panel info label */}
-                {draggingFrom !== null && draggingTo !== null && draggingTo !== draggingFrom && (() => {
-                  const a = powerLinePosMap.get(draggingFrom);
-                  const b = powerLinePosMap.get(draggingTo);
-                  const bCenter = panelPositionMap.get(draggingTo);
-                  if (!a || !b || !bCenter) return null;
-                  const mx = (a.x + b.x) / 2;
-                  const my = (a.y + b.y) / 2;
+                {/* Preview of active multi-segment path being drawn */}
+                {activePath.length >= 1 && (() => {
+                  const pts = activePath.map(n => powerLinePosMap.get(n)).filter((p): p is {x:number;y:number} => !!p);
                   const nextLabel = String(powerLines.length + 1);
-                  // Info label above the target panel
-                  const infoText = `Line ${nextLabel}  ·  ${draggingFrom} → ${draggingTo}`;
-                  const infoX = bCenter.x;
-                  const infoY = bCenter.y - PANEL_WIDTH / 2 - 14;
+                  const last = pts[pts.length - 1];
+                  const infoText = `Line ${nextLabel}  ·  ${activePath.length} panel${activePath.length === 1 ? '' : 's'}`;
                   const infoW = infoText.length * 5.6 + 12;
                   return (
                     <g>
-                      <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#facc15" strokeWidth={6} strokeLinecap="round" strokeDasharray="8 4" opacity={0.7} />
-                      <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#dc2626" strokeWidth={3} strokeLinecap="round" strokeDasharray="8 4" opacity={0.7} />
-                      <circle cx={mx} cy={my} r={9} fill="#1e293b" stroke="#facc15" strokeWidth={2} opacity={0.7} />
-                      <text x={mx} y={my} textAnchor="middle" dominantBaseline="central" fontSize={9} fontWeight="bold" fill="#facc15" opacity={0.7}>{nextLabel}</text>
-                      {/* Floating info label above target panel */}
-                      <rect x={infoX - infoW / 2} y={infoY - 9} width={infoW} height={16} rx={4} fill="#1e293b" opacity={0.92} />
-                      <text x={infoX} y={infoY} textAnchor="middle" dominantBaseline="central" fontSize={9} fontWeight="bold" fill="#facc15">{infoText}</text>
+                      {pts.length >= 2 && (() => {
+                        const pathD = pts.map((p, j) => `${j === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+                        const midIdx = Math.floor((pts.length - 1) / 2);
+                        const mx = (pts[midIdx].x + pts[midIdx + 1].x) / 2;
+                        const my = (pts[midIdx].y + pts[midIdx + 1].y) / 2;
+                        return (
+                          <>
+                            <path d={pathD} stroke="#facc15" strokeWidth={6} strokeLinecap="round" strokeLinejoin="round" fill="none" strokeDasharray="8 4" opacity={0.7} />
+                            <path d={pathD} stroke="#dc2626" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" fill="none" strokeDasharray="8 4" opacity={0.7} />
+                            <circle cx={mx} cy={my} r={9} fill="#1e293b" stroke="#facc15" strokeWidth={2} opacity={0.7} />
+                            <text x={mx} y={my} textAnchor="middle" dominantBaseline="central" fontSize={9} fontWeight="bold" fill="#facc15" opacity={0.7}>{nextLabel}</text>
+                          </>
+                        );
+                      })()}
+                      {last && (
+                        <>
+                          <rect x={last.x - infoW / 2} y={last.y - PANEL_WIDTH / 2 - 23} width={infoW} height={16} rx={4} fill="#1e293b" opacity={0.92} />
+                          <text x={last.x} y={last.y - PANEL_WIDTH / 2 - 15} textAnchor="middle" dominantBaseline="central" fontSize={9} fontWeight="bold" fill="#facc15">{infoText}</text>
+                        </>
+                      )}
                     </g>
                   );
                 })()}
