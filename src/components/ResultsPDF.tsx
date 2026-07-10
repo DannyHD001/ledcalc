@@ -441,26 +441,7 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
                 </React.Fragment>
               );
             })()}
-            {/* Power lines */}
-            {powerLines.map((pl, i) => {
-              const aEntry = snake.find(p => p.num === pl.from);
-              const bEntry = snake.find(p => p.num === pl.to);
-              if (!aEntry || !bEntry) return null;
-              const ax = aEntry.col * (cellSize + gap) + cellSize / 2;
-              const ay = aEntry.row * (cellSize + gap) + pdfHeaderH + cellSize / 2;
-              const bx = bEntry.col * (cellSize + gap) + cellSize / 2;
-              const by = bEntry.row * (cellSize + gap) + pdfHeaderH + cellSize / 2;
-              const mx = (ax + bx) / 2;
-              const my = (ay + by) / 2;
-              return (
-                <React.Fragment key={`pwrline-${i}`}>
-                  <Path d={`M ${ax} ${ay} L ${bx} ${by}`} stroke="#facc15" strokeWidth={4} strokeLinecap="round" fill="none" />
-                  <Path d={`M ${ax} ${ay} L ${bx} ${by}`} stroke="#dc2626" strokeWidth={2} strokeLinecap="round" fill="none" />
-                  <Circle cx={mx} cy={my} r={5} fill="#1e293b" stroke="#facc15" strokeWidth={1.5} />
-                  <Text style={{ position:'absolute', left: mx - 4, top: my - 4, fontSize: 5, fontWeight: 'bold', color: '#facc15', width: 8, textAlign: 'center' }}>{String(i + 1)}</Text>
-                </React.Fragment>
-              );
-            })}
+            {/* Power lines — drawn at y+22 offset to stay below data routing lines */}\n            {powerLines.map((pl, i) => {\n              const aEntry = snake.find(p => p.num === pl.from);\n              const bEntry = snake.find(p => p.num === pl.to);\n              if (!aEntry || !bEntry) return null;\n              const ax = aEntry.col * (cellSize + gap) + cellSize / 2;\n              const ay = aEntry.row * (cellSize + gap) + pdfHeaderH + cellSize / 2 + (cellSize * 0.22);\n              const bx = bEntry.col * (cellSize + gap) + cellSize / 2;\n              const by = bEntry.row * (cellSize + gap) + pdfHeaderH + cellSize / 2 + (cellSize * 0.22);\n              const mx = (ax + bx) / 2;\n              const my = (ay + by) / 2;\n              return (\n                <React.Fragment key={`pwrline-${i}`}>\n                  <Path d={`M ${ax} ${ay} L ${bx} ${by}`} stroke=\"#facc15\" strokeWidth={4} strokeLinecap=\"round\" fill=\"none\" />\n                  <Path d={`M ${ax} ${ay} L ${bx} ${by}`} stroke=\"#dc2626\" strokeWidth={2} strokeLinecap=\"round\" fill=\"none\" />\n                  <Circle cx={mx} cy={my} r={5} fill=\"#1e293b\" stroke=\"#facc15\" strokeWidth={1.5} />\n                  <Text style={{ position:'absolute', left: mx - 4, top: my - 4, fontSize: 5, fontWeight: 'bold', color: '#facc15', width: 8, textAlign: 'center' }}>{String(i + 1)}</Text>\n                </React.Fragment>\n              );\n            })}
             {/* Legend color boxes */}
             {groups.map((_,i)=> {
               const meta = groupMeta[i] || { processorIndex: 0, portInProcessor: i + 1 };

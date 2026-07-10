@@ -466,6 +466,22 @@ export function ScreenVisualization({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [horizontalPanels, verticalPanels, numberingDirection]);
 
+  // Power lines connect at lower portion of panel (y+22) so they don't overlap data routing lines at center
+  const powerLinePosMap = useMemo(() => {
+    const map = new Map<number, {x: number; y: number}>();
+    for (let row = 0; row < verticalPanels; row++) {
+      for (let col = 0; col < horizontalPanels; col++) {
+        const num = getPanelNumber(row, col);
+        map.set(num, {
+          x: col * (PANEL_WIDTH + PANEL_GAP) + PANEL_WIDTH / 2,
+          y: row * (PANEL_WIDTH + PANEL_GAP) + PANEL_WIDTH / 2 + 22
+        });
+      }
+    }
+    return map;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [horizontalPanels, verticalPanels, numberingDirection]);
+
   // Cancel drag when mouse released outside a panel
   useEffect(() => {
     if (!powerLineMode) return;
@@ -879,8 +895,8 @@ export function ScreenVisualization({
                 style={{ width: totalWidth, height: totalHeight }}
               >
                 {powerLines.map((pl, i) => {
-                  const a = panelPositionMap.get(pl.from);
-                  const b = panelPositionMap.get(pl.to);
+                  const a = powerLinePosMap.get(pl.from);
+                  const b = powerLinePosMap.get(pl.to);
                   if (!a || !b) return null;
                   const mx = (a.x + b.x) / 2;
                   const my = (a.y + b.y) / 2;
@@ -895,20 +911,29 @@ export function ScreenVisualization({
                     </g>
                   );
                 })}
-                {/* Preview line while dragging — shows next number */}
+                {/* Preview line while dragging — shows next number + panel info label */}
                 {draggingFrom !== null && draggingTo !== null && draggingTo !== draggingFrom && (() => {
-                  const a = panelPositionMap.get(draggingFrom);
-                  const b = panelPositionMap.get(draggingTo);
-                  if (!a || !b) return null;
+                  const a = powerLinePosMap.get(draggingFrom);
+                  const b = powerLinePosMap.get(draggingTo);
+                  const bCenter = panelPositionMap.get(draggingTo);
+                  if (!a || !b || !bCenter) return null;
                   const mx = (a.x + b.x) / 2;
                   const my = (a.y + b.y) / 2;
                   const nextLabel = String(powerLines.length + 1);
+                  // Info label above the target panel
+                  const infoText = `Line ${nextLabel}  ·  ${draggingFrom} → ${draggingTo}`;
+                  const infoX = bCenter.x;
+                  const infoY = bCenter.y - PANEL_WIDTH / 2 - 14;
+                  const infoW = infoText.length * 5.6 + 12;
                   return (
                     <g>
                       <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#facc15" strokeWidth={6} strokeLinecap="round" strokeDasharray="8 4" opacity={0.7} />
                       <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#dc2626" strokeWidth={3} strokeLinecap="round" strokeDasharray="8 4" opacity={0.7} />
                       <circle cx={mx} cy={my} r={9} fill="#1e293b" stroke="#facc15" strokeWidth={2} opacity={0.7} />
                       <text x={mx} y={my} textAnchor="middle" dominantBaseline="central" fontSize={9} fontWeight="bold" fill="#facc15" opacity={0.7}>{nextLabel}</text>
+                      {/* Floating info label above target panel */}
+                      <rect x={infoX - infoW / 2} y={infoY - 9} width={infoW} height={16} rx={4} fill="#1e293b" opacity={0.92} />
+                      <text x={infoX} y={infoY} textAnchor="middle" dominantBaseline="central" fontSize={9} fontWeight="bold" fill="#facc15">{infoText}</text>
                     </g>
                   );
                 })()}
