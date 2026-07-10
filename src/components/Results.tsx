@@ -3,7 +3,7 @@ import { Controller } from '../types/controller';
 import { Download, Monitor, Weight, Cpu, Box, Network, Grid, Image } from 'lucide-react';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import { ResultsPDF } from './ResultsPDF';
-import { ScreenVisualization } from './ScreenVisualization';
+import { ScreenVisualization, PowerLine } from './ScreenVisualization';
 import { usePanelCalculator } from '../hooks/usePanelCalculator';
 import { downloadPixelMap } from '../utils/pixelMapGenerator';
 
@@ -19,6 +19,8 @@ interface ResultsProps {
   onPortStartOverridesChange?: (overrides: {[portNumber: number]: number | undefined}) => void;
   processorSplitColumn?: number;
   onProcessorSplitColumnChange?: (col: number | undefined) => void;
+  powerLines?: PowerLine[];
+  onPowerLinesChange?: (lines: PowerLine[]) => void;
   projectName?: string;
   projectDate?: string;
 }
@@ -35,6 +37,8 @@ export function Results({
   onPortStartOverridesChange,
   processorSplitColumn,
   onProcessorSplitColumnChange,
+  powerLines = [],
+  onPowerLinesChange,
   projectName,
   projectDate
 }: ResultsProps) {
@@ -80,6 +84,7 @@ export function Results({
               controller={controller}
               portStartOverrides={portStartOverrides}
               processorSplitColumn={processorSplitColumn}
+              powerLines={powerLines}
             />
           }
           fileName={[
@@ -287,6 +292,8 @@ export function Results({
           portStartOverrides={portStartOverrides}
           onPortStartOverridesChange={onPortStartOverridesChange}
           processorSplitColumn={processorSplitColumn}
+          powerLines={powerLines}
+          onPowerLinesChange={onPowerLinesChange}
         />
       </div>
     </div>

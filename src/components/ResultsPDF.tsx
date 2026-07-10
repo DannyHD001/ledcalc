@@ -76,9 +76,10 @@ interface ResultsPDFProps {
   controller?: Controller | null;
   portStartOverrides?: {[portNumber: number]: number | undefined};
   processorSplitColumn?: number;
+  powerLines?: Array<{from: number; to: number}>;
 }
 
-export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPanels, logo, numberingDirection = 'left', projectName, projectDate, controller, portStartOverrides = {}, processorSplitColumn }: ResultsPDFProps) {
+export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPanels, logo, numberingDirection = 'left', projectName, projectDate, controller, portStartOverrides = {}, processorSplitColumn, powerLines = [] }: ResultsPDFProps) {
   // Debug: Log logo prop
   console.log('ResultsPDF - Logo prop:', logo);
   // --- Visualization helpers (simplified mirror of on-screen logic) ---
@@ -440,6 +441,22 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
                 </React.Fragment>
               );
             })()}
+            {/* Power lines */}
+            {powerLines.map((pl, i) => {
+              const aEntry = snake.find(p => p.num === pl.from);
+              const bEntry = snake.find(p => p.num === pl.to);
+              if (!aEntry || !bEntry) return null;
+              const ax = aEntry.col * (cellSize + gap) + cellSize / 2;
+              const ay = aEntry.row * (cellSize + gap) + pdfHeaderH + cellSize / 2;
+              const bx = bEntry.col * (cellSize + gap) + cellSize / 2;
+              const by = bEntry.row * (cellSize + gap) + pdfHeaderH + cellSize / 2;
+              return (
+                <React.Fragment key={`pwrline-${i}`}>
+                  <Path d={`M ${ax} ${ay} L ${bx} ${by}`} stroke="#facc15" strokeWidth={4} strokeLinecap="round" fill="none" />
+                  <Path d={`M ${ax} ${ay} L ${bx} ${by}`} stroke="#dc2626" strokeWidth={2} strokeLinecap="round" fill="none" />
+                </React.Fragment>
+              );
+            })}
             {/* Legend color boxes */}
             {groups.map((_,i)=> {
               const meta = groupMeta[i] || { processorIndex: 0, portInProcessor: i + 1 };

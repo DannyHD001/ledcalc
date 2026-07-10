@@ -4,7 +4,7 @@ import { TabPanel } from './components/TabPanel';
 import { PanelSelector } from './components/PanelSelector';
 import { ControllerSelector } from './components/ControllerSelector';
 import { ScreenConfig } from './components/ScreenConfig';
-import { ScreenVisualization } from './components/ScreenVisualization';
+import { ScreenVisualization, PowerLine } from './components/ScreenVisualization';
 import { Results } from './components/Results';
 import { Panel } from './types/panel';
 import { Controller } from './types/controller';
@@ -25,6 +25,7 @@ function App() {
   const [numberingDirection, setNumberingDirection] = useState<'left' | 'right' | 'top' | 'bottom'>('left');
   const [portStartOverrides, setPortStartOverrides] = useState<{[portNumber: number]: number | undefined}>({});
   const [processorSplitColumn, setProcessorSplitColumn] = useState<number | undefined>(undefined);
+  const [powerLines, setPowerLines] = useState<PowerLine[]>([]);
   const [projectName, setProjectName] = useState('');
   const [projectDate, setProjectDate] = useState(() => new Date().toISOString().slice(0, 10));
   const { panels, loading, error, showErrorModal, clearError, savePanel, removePanel, refreshPanels } = useDatabase();
@@ -194,6 +195,8 @@ function App() {
                 portStartOverrides={portStartOverrides}
                 onPortStartOverridesChange={setPortStartOverrides}
                 processorSplitColumn={processorSplitColumn}
+                powerLines={powerLines}
+                onPowerLinesChange={setPowerLines}
               />
             ) : (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
@@ -227,6 +230,8 @@ function App() {
                 onPortStartOverridesChange={setPortStartOverrides}
                 processorSplitColumn={processorSplitColumn}
                 onProcessorSplitColumnChange={setProcessorSplitColumn}
+                powerLines={powerLines}
+                onPowerLinesChange={setPowerLines}
                 projectName={projectName}
                 projectDate={projectDate}
               />

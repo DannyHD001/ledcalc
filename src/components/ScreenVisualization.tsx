@@ -1,12 +1,17 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Panel } from '../types/panel';
 import { Controller } from '../types/controller';
-import { Circle, Wrench, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
+import { Circle, Wrench, ZoomIn, ZoomOut, Maximize, Zap, Trash2 } from 'lucide-react';
 
 const LINE_COLOR_PALETTE = [
   '#E6194B','#3CB44B','#0082C8','#F58230','#911EB4','#46F0F0','#F032E6','#D2F53C','#FABEBE','#008080',
   '#E6BEFF','#AA6E28','#FFE119','#800000','#82B6E9','#9A6324','#A9A9A9','#FFFFFF','#000000'
 ];
+
+export interface PowerLine {
+  from: number; // panel number
+  to: number;   // panel number
+}
 
 interface ScreenVisualizationProps {
   panel: Panel | null;
@@ -18,6 +23,8 @@ interface ScreenVisualizationProps {
   portStartOverrides?: {[portNumber: number]: number | undefined};
   onPortStartOverridesChange?: (overrides: {[portNumber: number]: number | undefined}) => void;
   processorSplitColumn?: number;
+  powerLines?: PowerLine[];
+  onPowerLinesChange?: (lines: PowerLine[]) => void;
 }
 
 export function ScreenVisualization({ 
@@ -29,11 +36,16 @@ export function ScreenVisualization({
   onNumberingDirectionChange,
   portStartOverrides = {},
   onPortStartOverridesChange,
-  processorSplitColumn
+  processorSplitColumn,
+  powerLines = [],
+  onPowerLinesChange
 }: ScreenVisualizationProps) {
   const [showProcessorLines, setShowProcessorLines] = useState(true);
   const [zoom, setZoom] = useState(1);
   const [showPortOverrides, setShowPortOverrides] = useState(false);
+  const [powerLineMode, setPowerLineMode] = useState(false);
+  const [draggingFrom, setDraggingFrom] = useState<number | null>(null);
+  const [draggingTo, setDraggingTo] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
   // Get processor configuration - using controller data if available, otherwise defaults
@@ -437,7 +449,52 @@ export function ScreenVisualization({
 
   const totalWidth = (horizontalPanels * PANEL_WIDTH) + ((horizontalPanels - 1) * PANEL_GAP);
   const totalHeight = (verticalPanels * PANEL_WIDTH) + ((verticalPanels - 1) * PANEL_GAP);
-  
+
+  // Panel number → pixel center (for power line rendering)
+  const panelPositionMap = useMemo(() => {
+    const map = new Map<number, {x: number; y: number}>();
+    for (let row = 0; row < verticalPanels; row++) {
+      for (let col = 0; col < horizontalPanels; col++) {
+        const num = getPanelNumber(row, col);
+        map.set(num, {
+          x: col * (PANEL_WIDTH + PANEL_GAP) + PANEL_WIDTH / 2,
+          y: row * (PANEL_WIDTH + PANEL_GAP) + PANEL_WIDTH / 2
+        });
+      }
+    }
+    return map;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [horizontalPanels, verticalPanels, numberingDirection]);
+
+  // Cancel drag when mouse released outside a panel
+  useEffect(() => {
+    if (!powerLineMode) return;
+    const cancel = () => { setDraggingFrom(null); setDraggingTo(null); };
+    window.addEventListener('mouseup', cancel);
+    return () => window.removeEventListener('mouseup', cancel);
+  }, [powerLineMode]);
+
+  const handlePanelMouseDown = useCallback((panelNum: number) => {
+    if (!powerLineMode) return;
+    setDraggingFrom(panelNum);
+    setDraggingTo(null);
+  }, [powerLineMode]);
+
+  const handlePanelMouseEnter = useCallback((panelNum: number) => {
+    if (!powerLineMode || draggingFrom === null) return;
+    setDraggingTo(panelNum);
+  }, [powerLineMode, draggingFrom]);
+
+  const handlePanelMouseUp = useCallback((panelNum: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!powerLineMode || draggingFrom === null) return;
+    if (panelNum !== draggingFrom) {
+      onPowerLinesChange?.([...powerLines, { from: draggingFrom, to: panelNum }]);
+    }
+    setDraggingFrom(null);
+    setDraggingTo(null);
+  }, [powerLineMode, draggingFrom, powerLines, onPowerLinesChange]);
+
   // Calculate extra space needed for exit lines
   const getExtraSpace = () => ({ width: 0, height: 0 });
 
@@ -512,6 +569,34 @@ export function ScreenVisualization({
             >
               {showProcessorLines ? 'Enabled' : 'Disabled'}
             </button>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Power Lines
+            </label>
+            <div className="flex gap-1">
+              <button
+                onClick={() => setPowerLineMode(!powerLineMode)}
+                title={powerLineMode ? 'Exit draw mode' : 'Draw power lines'}
+                className={`flex-1 px-3 py-2 text-sm font-medium rounded-md flex items-center justify-center gap-1 ${
+                  powerLineMode
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-white text-gray-700 border border-gray-300'
+                }`}
+              >
+                <Zap className="w-3.5 h-3.5" />
+                {powerLineMode ? 'Drawing' : 'Draw'}
+              </button>
+              {powerLines.length > 0 && (
+                <button
+                  onClick={() => onPowerLinesChange?.([])}
+                  title="Clear all power lines"
+                  className="px-2 py-2 text-sm font-medium rounded-md bg-white text-red-600 border border-gray-300 hover:bg-red-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
         
@@ -739,20 +824,33 @@ export function ScreenVisualization({
                 height: totalHeight
               }}
             >
-              {Array.from({ length: verticalPanels }).map((_, row) => (
-                Array.from({ length: horizontalPanels }).map((_, col) => (
+              {Array.from({ length: verticalPanels }).map((_, row) =>
+                Array.from({ length: horizontalPanels }).map((_, col) => {
+                  const panelNum = getPanelNumber(row, col);
+                  const isDrawSource = powerLineMode && draggingFrom === panelNum;
+                  const isDrawHover = powerLineMode && draggingFrom !== null && draggingTo === panelNum && panelNum !== draggingFrom;
+                  return (
                   <div
                     key={`${row}-${col}`}
                     className="bg-gray-800 rounded relative"
                     style={{
                       width: PANEL_WIDTH,
                       height: PANEL_WIDTH,
-                      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.1)'
+                      boxShadow: isDrawSource
+                        ? 'inset 0 0 0 3px #facc15'
+                        : isDrawHover
+                        ? 'inset 0 0 0 3px #dc2626'
+                        : 'inset 0 0 0 1px rgba(255,255,255,0.1)',
+                      cursor: powerLineMode ? (draggingFrom ? 'crosshair' : 'cell') : 'default',
+                      userSelect: 'none'
                     }}
+                    onMouseDown={() => handlePanelMouseDown(panelNum)}
+                    onMouseEnter={() => handlePanelMouseEnter(panelNum)}
+                    onMouseUp={(e) => handlePanelMouseUp(panelNum, e)}
                   >
                     <div className="absolute inset-0 flex items-center justify-center">
                       <span className="text-white font-mono text-sm">
-                        {getPanelNumber(row, col)}
+                        {panelNum}
                       </span>
                     </div>
                     <div className="absolute top-1 left-1 text-gray-400 text-xs">
@@ -763,17 +861,47 @@ export function ScreenVisualization({
                       <div 
                         className="absolute bottom-1 right-1 w-3 h-3 rounded-full border-2 border-white"
                         style={{ 
-                          backgroundColor: panelColorMap.get(getPanelNumber(row, col)) || '#666'
+                          backgroundColor: panelColorMap.get(panelNum) || '#666'
                         }}
                       />
                     )}
                   </div>
-                ))
-              ))}
+                  );
+                })
+              )}
             </div>
             {/* Processor lines overlay */}
-            <div style={{ width: totalWidth, height: totalHeight }}>
+            <div style={{ width: totalWidth, height: totalHeight, position: 'relative' }}>
               {renderProcessorLines()}
+              {/* Power lines overlay */}
+              <svg
+                className="absolute inset-0 pointer-events-none"
+                style={{ width: totalWidth, height: totalHeight }}
+              >
+                {powerLines.map((pl, i) => {
+                  const a = panelPositionMap.get(pl.from);
+                  const b = panelPositionMap.get(pl.to);
+                  if (!a || !b) return null;
+                  return (
+                    <g key={`pl-${i}`}>
+                      <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#facc15" strokeWidth={6} strokeLinecap="round" />
+                      <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#dc2626" strokeWidth={3} strokeLinecap="round" />
+                    </g>
+                  );
+                })}
+                {/* Preview line while dragging */}
+                {draggingFrom !== null && draggingTo !== null && draggingTo !== draggingFrom && (() => {
+                  const a = panelPositionMap.get(draggingFrom);
+                  const b = panelPositionMap.get(draggingTo);
+                  if (!a || !b) return null;
+                  return (
+                    <g>
+                      <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#facc15" strokeWidth={6} strokeLinecap="round" strokeDasharray="8 4" opacity={0.7} />
+                      <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#dc2626" strokeWidth={3} strokeLinecap="round" strokeDasharray="8 4" opacity={0.7} />
+                    </g>
+                  );
+                })()}
+              </svg>
             </div>
           </div>
         </div>
