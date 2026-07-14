@@ -288,6 +288,25 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
     return plRootToGroup[root];
   });
 
+  // Pre-compute midpoints for power line number badges (needed outside SVG for text overlay)
+  const plMidpoints = powerLines.map((pl, i) => {
+    const pts = pl.panels.map(n => {
+      const entry = snake.find(p => p.num === n);
+      if (!entry) return null;
+      return {
+        x: entry.col * (cellSize + gap) + cellSize / 2,
+        y: entry.row * (cellSize + gap) + pdfHeaderH + cellSize / 2 + (cellSize * 0.22)
+      };
+    }).filter((p): p is {x:number;y:number} => !!p);
+    if (pts.length < 2) return null;
+    const midIdx = Math.floor((pts.length - 1) / 2);
+    return {
+      mx: (pts[midIdx].x + pts[midIdx + 1].x) / 2,
+      my: (pts[midIdx].y + pts[midIdx + 1].y) / 2,
+      groupNum: plGroupMap[i] ?? (i + 1)
+    };
+  });
+
   return (
     <Document>
       {/* Summary Page (portrait) */}
@@ -474,16 +493,14 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
               }).filter((p): p is {x:number;y:number} => !!p);
               if (pts.length < 2) return null;
               const pathD = pts.map((p, j) => `${j === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-              const groupNum = plGroupMap[i] ?? (i + 1);
-              const midIdx = Math.floor((pts.length - 1) / 2);
-              const mx = (pts[midIdx].x + pts[midIdx + 1].x) / 2;
-              const my = (pts[midIdx].y + pts[midIdx + 1].y) / 2;
+              const mid = plMidpoints[i];
+              const mx = mid?.mx ?? pts[0].x;
+              const my = mid?.my ?? pts[0].y;
               return (
                 <React.Fragment key={`pwrline-${i}`}>
                   <Path d={pathD} stroke="#facc15" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" fill="none" />
                   <Path d={pathD} stroke="#dc2626" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
                   <Circle cx={mx} cy={my} r={5} fill="#1e293b" stroke="#facc15" strokeWidth={1.5} />
-                  <Text style={{ position:'absolute', left: mx - 4, top: my - 4, fontSize: 5, fontWeight: 'bold', color: '#facc15', width: 8, textAlign: 'center' }}>{String(groupNum)}</Text>
                 </React.Fragment>
               );
             })}
@@ -500,6 +517,15 @@ export function ResultsPDF({ panel, calculations, horizontalPanels, verticalPane
               );
             })}
           </Svg>
+          {/* Power line number badge overlays */}
+          {plMidpoints.map((mid, i) => {
+            if (!mid) return null;
+            return (
+              <Text key={`plnum-${i}`} style={{ position:'absolute', left: mid.mx - 5, top: mid.my - 5, width: 10, height: 10, textAlign:'center', fontSize: 6, fontWeight: 'bold', color: '#facc15' }}>
+                {String(mid.groupNum)}
+              </Text>
+            );
+          })}
           {/* Text overlays for panel numbers & labels */}
           {snake.map(p=> {
             const x = p.col * (cellSize + gap);

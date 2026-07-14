@@ -8,6 +8,10 @@ const LINE_COLOR_PALETTE = [
   '#E6BEFF','#AA6E28','#FFE119','#800000','#82B6E9','#9A6324','#A9A9A9','#FFFFFF','#000000'
 ];
 
+const PANEL_WIDTH = 100; // Width of each panel in pixels
+const PANEL_GAP = 2;     // Gap between panels
+const HEADER_HEIGHT = 40; // Height of the header section
+
 export interface PowerLine {
   panels: number[]; // ordered panel numbers forming the path
 }
@@ -67,10 +71,6 @@ export function ScreenVisualization({
   if (!panel || horizontalPanels <= 0 || verticalPanels <= 0) {
     return null;
   }
-
-  const PANEL_WIDTH = 100; // Width of each panel in pixels
-  const PANEL_GAP = 2; // Gap between panels
-  const HEADER_HEIGHT = 40; // Height of the header section
 
   const renderAttachmentPoint = () => (
     panel.headerConfig.attachmentType === 'shackle' ? (
